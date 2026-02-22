@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工具导航</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #f0f2f5;
+    --sidebar-bg: #ffffff;
+    --card-bg: #ffffff;
+    --primary: #4f6ef7;
+    --primary-light: #eef1ff;
+    --text: #1a1d23;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --shadow-hover: 0 6px 20px rgba(79,110,247,0.15);
+    --sidebar-width: 220px;
+    --header-h: 60px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--header-h);
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .logo {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .search-bar {
+    flex: 1;
+    max-width: 420px;
+    position: relative;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 8px 16px 8px 38px;
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    font-size: 0.9rem;
+    outline: none;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+  }
+  .search-bar input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,110,247,0.1);
+    background: #fff;
+  }
+  .search-icon {
+    position: absolute;
+    left: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    pointer-events: none;
+  }
+
+  .header-right { margin-left: auto; }
+
+  .admin-toggle-btn {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .admin-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .admin-toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* LAYOUT */
+  .layout {
+    display: flex;
+    margin-top: var(--header-h);
+    min-height: calc(100vh - var(--header-h));
+  }
+
+  /* SIDEBAR */
+  aside {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    padding: 16px 12px;
+  }
+
+  .cat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 10px 4px;
+  }
+
+  .cat-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+  .cat-item:hover { background: var(--primary-light); color: var(--primary); }
+  .cat-item.active { background: var(--primary-light); color: var(--primary); font-weight: 700; }
+  .cat-item .cat-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+  .cat-item .cat-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-item .cat-count {
+    background: var(--border);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    min-width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .cat-item.active .cat-count { background: var(--primary); color: #fff; }
+
+  .cat-admin-btns { display: none; gap: 4px; flex-shrink: 0; }
+  body.admin-mode .cat-admin-btns { display: flex; }
+  .cat-admin-btn {
+    width: 20px; height: 20px;
+    border: none; border-radius: 5px;
+    cursor: pointer; font-size: 0.7rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; background: #fee2e2; color: #ef4444;
+  }
+  .cat-admin-btn:hover { background: #ef4444; color: #fff; }
+
+  .add-cat-btn {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .add-cat-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+  body.admin-mode .add-cat-btn { display: block; }
+
+  /* MAIN */
+  main {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    padding: 28px 32px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .add-tool-btn {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(79,110,247,0.3);
+    font-family: inherit;
+  }
+  .add-tool-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(79,110,247,0.4); }
+  body.admin-mode .add-tool-btn { display: flex; }
+
+  /* CARDS */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  .tool-card {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .tool-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  .card-top { display: flex; align-items: flex-start; gap: 12px; }
+  .card-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .card-cat-tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+  .card-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-admin-overlay {
+    display: none;
+    position: absolute;
+    top: 8px; right: 8px;
+    gap: 5px;
+  }
+  body.admin-mode .card-admin-overlay { display: flex; }
+  .card-edit-btn, .card-del-btn {
+    width: 26px; height: 26px;
+    border: none; border-radius: 7px;
+    cursor: pointer; font-size: 0.75rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  }
+  .card-edit-btn { background: #fff; color: var(--primary); }
+  .card-edit-btn:hover { background: var(--primary); color: #fff; }
+  .card-del-btn { background: #fff; color: #ef4444; }
+  .card-del-btn:hover { background: #ef4444; color: #fff; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    grid-column: 1 / -1;
+  }
+  .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 32px;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: modalIn 0.2s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  @keyframes modalIn {
+    from { transform: scale(0.94); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    color: var(--text);
+    transition: border-color 0.2s;
+    background: #fff;
+  }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,110,247,0.1);
+  }
+  .form-group textarea { resize: vertical; min-height: 72px; }
+
+  .emoji-picker-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 8px;
+  }
+  .emoji-opt {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-size: 1.15rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .emoji-opt:hover, .emoji-opt.selected { border-color: var(--primary); background: var(--primary-light); }
+
+  .color-picker-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .color-opt {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    outline: 1px solid #ddd;
+  }
+  .color-opt:hover, .color-opt.selected { border-color: var(--primary); transform: scale(1.2); outline-color: var(--primary); }
+
+  .modal-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 22px;
+  }
+  .btn-cancel {
+    padding: 9px 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-cancel:hover { border-color: var(--text-muted); }
+  .btn-confirm {
+    padding: 9px 24px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(79,110,247,0.3);
+    font-family: inherit;
+  }
+  .btn-confirm:hover { box-shadow: 0 4px 14px rgba(79,110,247,0.4); }
+
+  .admin-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
+
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  @media (max-width: 768px) {
+    :root { --sidebar-width: 0px; }
+    aside { display: none; }
+    main { margin-left: 0; padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🧰 工具导航</div>
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="搜索工具名称或描述…" oninput="handleSearch()">
+  </div>
+  <div class="header-right">
+    <button class="admin-toggle-btn" id="adminToggleBtn" onclick="toggleAdminMode()">⚙️ 管理</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="cat-label">分类</div>
+    <div id="catList"></div>
+    <button class="add-cat-btn" onclick="openAddCatModal()">＋ 新增分类</button>
+  </aside>
+  <main>
+    <div class="section-header">
+      <div class="section-title">
+        <span id="sectionIcon">🏠</span>
+        <span id="sectionTitle">全部工具</span>
+      </div>
+      <button class="add-tool-btn" onclick="openAddToolModal()">＋ 添加工具</button>
+    </div>
+    <div class="cards-grid" id="cardsGrid"></div>
+  </main>
+</div>
+
+<!-- 工具弹窗 -->
+<div class="modal-overlay" id="toolModal">
+  <div class="modal">
+    <h3 id="toolModalTitle">➕ 添加工具</h3>
+    <div class="form-group">
+      <label>工具名称 *</label>
+      <input type="text" id="toolName" placeholder="例：EXCEL合并工具">
+    </div>
+    <div class="form-group">
+      <label>工具链接 *</label>
+      <input type="text" id="toolUrl" placeholder="例：tools/EXCEL合并.html">
+    </div>
+    <div class="form-group">
+      <label>简短描述</label>
+      <textarea id="toolDesc" placeholder="一句话描述工具用途…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>所属分类</label>
+      <select id="toolCat"></select>
+    </div>
+    <div class="form-group">
+      <label>图标</label>
+      <div class="emoji-picker-row" id="emojiPicker"></div>
+    </div>
+    <div class="form-group">
+      <label>图标背景色</label>
+      <div class="color-picker-row" id="colorPicker"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('toolModal')">取消</button>
+      <button class="btn-confirm" onclick="saveToolModal()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 分类弹窗 -->
+<div class="modal-overlay" id="catModal">
+  <div class="modal">
+    <h3>📁 新增分类</h3>
+    <div class="form-group">
+      <label>分类名称 *</label>
+      <input type="text" id="catName" placeholder="例：数据处理">
+    </div>
+    <div class="form-group">
+      <label>分类图标</label>
+      <div class="emoji-picker-row" id="catEmojiPicker"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('catModal')">取消</button>
+      <button class="btn-confirm" onclick="saveCatModal()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 密码弹窗 -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal">
+    <h3>🔐 进入管理模式</h3>
+    <div class="form-group">
+      <label>管理员密码</label>
+      <input type="password" id="adminPwdInput" placeholder="输入密码…" onkeydown="if(event.key==='Enter')verifyAdmin()">
+          </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('adminModal')">取消</button>
+      <button class="btn-confirm" onclick="verifyAdmin()">确认进入</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 可配置项 ====================
+const ADMIN_PASSWORD = 'zz126126'; // 修改此处更改密码
+
+// ==================== 默认数据 ====================
+const DEFAULT_DATA = {
+  categories: [
+    { id: 'excel', name: 'Excel工具', icon: '📊' }
+  ],
+  tools: [
+    {
+      id: 't1',
+      name: 'EXCEL合并工具',
+      url: 'tools/EXCEL合并.html',
+      desc: '将多个Excel/CSV文件按列名映射智能合并，支持列名重命名、空行过滤和预览导出。',
+      cat: 'excel',
+      icon: '🔗',
+      color: '#dbeafe'
+    },
+    {
+      id: 't2',
+      name: 'EXCEL笛卡尔积处理工具',
+      url: 'tools/EXCEL笛卡尔积.html',
+      desc: '对Excel数据列进行笛卡尔积组合，快速生成所有可能的组合结果。',
+      cat: 'excel',
+      icon: '⚡',
+      color: '#ede9fe'
+    }
+  ]
+};
+
+const EMOJIS = ['📊','🔗','⚡','🛠️','📄','📋','🗂️','🔍','📈','📉','💡','🧮','🧰','📦','🔧','✂️','🖨️','💾','📥','📤','🎯','🔄','⚙️','🧩','🌐','📌','🗃️','📝','🖥️','📱','🔐'];
+const COLORS = ['#dbeafe','#ede9fe','#dcfce7','#fef9c3','#fce7f3','#ffedd5','#e0f2fe','#f1f5f9','#fef2f2','#ecfdf5','#fff7ed','#f0fdf4'];
+
+// ==================== 状态 ====================
+const STORAGE_KEY = 'nav_data_v1';
+let data = (() => {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+})();
+
+let currentCat = 'all';
+let isAdmin = false;
+let editingToolId = null;
+let selEmoji = EMOJIS[0];
+let selColor = COLORS[0];
+let selCatEmoji = '📁';
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function genId() { return 'id' + Date.now() + Math.floor(Math.random()*999); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ==================== 侧栏 ====================
+function renderSidebar() {
+  const allCount = data.tools.length;
+  let html = `<div class="cat-item ${currentCat==='all'?'active':''}" onclick="selectCat('all')">
+    <span class="cat-icon">🏠</span><span class="cat-name">全部工具</span>
+    <span class="cat-count">${allCount}</span>
+  </div>`;
+
+  data.categories.forEach(cat => {
+    const cnt = data.tools.filter(t => t.cat === cat.id).length;
+    html += `<div class="cat-item ${currentCat===cat.id?'active':''}" onclick="selectCat('${cat.id}')">
+      <span class="cat-icon">${cat.icon}</span>
+      <span class="cat-name">${esc(cat.name)}</span>
+      <span class="cat-count">${cnt}</span>
+      <div class="cat-admin-btns">
+        <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${cat.id}')" title="删除分类">🗑</button>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('catList').innerHTML = html;
+}
+
+// ==================== 卡片 ====================
+function renderCards(tools) {
+  const grid = document.getElementById('cardsGrid');
+  if (!tools.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>暂无工具${isAdmin?'，点击右上角"添加工具"来添加':''}</p></div>`;
+    return;
+  }
+  grid.innerHTML = tools.map(t => {
+    const catName = data.categories.find(c => c.id === t.cat)?.name || '';
+    return `<a class="tool-card" href="${esc(t.url)}" target="_blank">
+      <div class="card-admin-overlay">
+        <button class="card-edit-btn" onclick="event.preventDefault();event.stopPropagation();openEditToolModal('${t.id}')" title="编辑">✏️</button>
+        <button class="card-del-btn" onclick="event.preventDefault();event.stopPropagation();deleteTool('${t.id}')" title="删除">🗑</button>
+      </div>
+      <div class="card-top">
+        <div class="card-icon" style="background:${t.color||'#f1f5f9'}">${t.icon||'🛠️'}</div>
+        <div class="card-info">
+          <div class="card-name">${esc(t.name)}</div>
+          ${catName ? `<span class="card-cat-tag">${esc(catName)}</span>` : ''}
+        </div>
+      </div>
+      <div class="card-desc">${esc(t.desc||'')}</div>
+    </a>`;
+  }).join('');
+}
+
+function selectCat(catId) {
+  currentCat = catId;
+  const cat = data.categories.find(c => c.id === catId);
+  document.getElementById('sectionIcon').textContent = catId === 'all' ? '🏠' : (cat?.icon || '📁');
+  document.getElementById('sectionTitle').textContent = catId === 'all' ? '全部工具' : (cat?.name || '');
+  document.getElementById('searchInput').value = '';
+  renderCards(catId === 'all' ? data.tools : data.tools.filter(t => t.cat === catId));
+  renderSidebar();
+}
+
+function handleSearch() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) { selectCat(currentCat); return; }
+  const base = currentCat === 'all' ? data.tools : data.tools.filter(t => t.cat === currentCat);
+  renderCards(base.filter(t => t.name.toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q)));
+}
+
+// ==================== 管理模式 ====================
+function toggleAdminMode() {
+  if (isAdmin) {
+    isAdmin = false;
+    document.body.classList.remove('admin-mode');
+    const btn = document.getElementById('adminToggleBtn');
+    btn.classList.remove('active');
+    btn.textContent = '⚙️ 管理';
+  } else {
+    openModal('adminModal');
+    document.getElementById('adminPwdInput').value = '';
+    setTimeout(() => document.getElementById('adminPwdInput').focus(), 150);
+  }
+}
+
+function verifyAdmin() {
+  const pwd = document.getElementById('adminPwdInput').value;
+  if (pwd === ADMIN_PASSWORD) {
+    isAdmin = true;
+    document.body.classList.add('admin-mode');
+    const btn = document.getElementById('adminToggleBtn');
+    btn.classList.add('active');
+    btn.innerHTML = '⚙️ 管理中 &nbsp;<small style="opacity:.7;font-weight:400">点击退出</small>';
+    closeModal('adminModal');
+  } else {
+    const inp = document.getElementById('adminPwdInput');
+    inp.style.borderColor = '#ef4444';
+    inp.value = '';
+    inp.placeholder = '❌ 密码错误，请重试';
+    setTimeout(() => { inp.style.borderColor = ''; inp.placeholder = '输入密码…'; }, 1800);
+  }
+}
+
+// ==================== 工具弹窗 ====================
+function buildEmojiPicker(containerId, selected, fn) {
+  document.getElementById(containerId).innerHTML = EMOJIS.map(e =>
+    `<div class="emoji-opt ${e===selected?'selected':''}" onclick="${fn}('${e}',this)">${e}</div>`
+  ).join('');
+}
+
+function buildColorPicker(selected) {
+  document.getElementById('colorPicker').innerHTML = COLORS.map(c =>
+    `<div class="color-opt ${c===selected?'selected':''}" style="background:${c}" onclick="pickColor('${c}',this)"></div>`
+  ).join('');
+}
+
+function pickEmoji(e, el) {
+  selEmoji = e;
+  document.querySelectorAll('#emojiPicker .emoji-opt').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function pickColor(c, el) {
+  selColor = c;
+  document.querySelectorAll('#colorPicker .color-opt').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function pickCatEmoji(e, el) {
+  selCatEmoji = e;
+  document.querySelectorAll('#catEmojiPicker .emoji-opt').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function fillCatSelect(selectedId) {
+  document.getElementById('toolCat').innerHTML = data.categories.map(c =>
+    `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${c.icon} ${c.name}</option>`
+  ).join('') || '<option value="">（暂无分类，请先添加）</option>';
+}
+
+function openAddToolModal() {
+  editingToolId = null;
+  selEmoji = EMOJIS[0]; selColor = COLORS[0];
+  document.getElementById('toolModalTitle').textContent = '➕ 添加工具';
+  document.getElementById('toolName').value = '';
+  document.getElementById('toolUrl').value = '';
+  document.getElementById('toolDesc').value = '';
+  fillCatSelect(currentCat !== 'all' ? currentCat : data.categories[0]?.id);
+  buildEmojiPicker('emojiPicker', selEmoji, 'pickEmoji');
+  buildColorPicker(selColor);
+  openModal('toolModal');
+}
+
+function openEditToolModal(id) {
+  const t = data.tools.find(x => x.id === id);
+  if (!t) return;
+  editingToolId = id;
+  selEmoji = t.icon || EMOJIS[0];
+  selColor = t.color || COLORS[0];
+  document.getElementById('toolModalTitle').textContent = '✏️ 编辑工具';
+  document.getElementById('toolName').value = t.name;
+  document.getElementById('toolUrl').value = t.url;
+  document.getElementById('toolDesc').value = t.desc || '';
+  fillCatSelect(t.cat);
+  buildEmojiPicker('emojiPicker', selEmoji, 'pickEmoji');
+  buildColorPicker(selColor);
+  openModal('toolModal');
+}
+
+function saveToolModal() {
+  const name = document.getElementById('toolName').value.trim();
+  const url = document.getElementById('toolUrl').value.trim();
+  const desc = document.getElementById('toolDesc').value.trim();
+  const cat = document.getElementById('toolCat').value;
+  if (!name) { alert('请填写工具名称'); return; }
+  if (!url) { alert('请填写工具链接'); return; }
+
+  if (editingToolId) {
+    const t = data.tools.find(x => x.id === editingToolId);
+    if (t) Object.assign(t, { name, url, desc, cat, icon: selEmoji, color: selColor });
+  } else {
+    data.tools.push({ id: genId(), name, url, desc, cat, icon: selEmoji, color: selColor });
+  }
+  save();
+  closeModal('toolModal');
+  selectCat(currentCat);
+}
+
+function deleteTool(id) {
+  if (!confirm('确定删除此工具？')) return;
+  data.tools = data.tools.filter(t => t.id !== id);
+  save();
+  selectCat(currentCat);
+}
+
+// ==================== 分类弹窗 ====================
+function openAddCatModal() {
+  selCatEmoji = '📁';
+  document.getElementById('catName').value = '';
+  buildEmojiPicker('catEmojiPicker', selCatEmoji, 'pickCatEmoji');
+  openModal('catModal');
+}
+
+function saveCatModal() {
+  const name = document.getElementById('catName').value.trim();
+  if (!name) { alert('请填写分类名称'); return; }
+  data.categories.push({ id: genId(), name, icon: selCatEmoji });
+  save();
+  closeModal('catModal');
+  renderSidebar();
+}
+
+function deleteCat(id) {
+  const cnt = data.tools.filter(t => t.cat === id).length;
+  const msg = cnt > 0 ? `该分类下有 ${cnt} 个工具（工具本身不会删除，仅移出分类）。确定删除分类？` : '确定删除此分类？';
+  if (!confirm(msg)) return;
+  data.categories = data.categories.filter(c => c.id !== id);
+  if (currentCat === id) currentCat = 'all';
+  save();
+  renderSidebar();
+  selectCat(currentCat);
+}
+
+// ==================== 弹窗控制 ====================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ==================== 初始化 ====================
+renderSidebar();
+selectCat('all');
+</script>
+</body>
+</html>
