@@ -17,8 +17,9 @@
     --text-muted: #6b7280;
     --border: #e5e7eb;
     --shadow-hover: 0 6px 20px rgba(79,110,247,0.15);
-    --sidebar-width: 220px;
+    --sidebar-w: 220px;
     --header-h: 60px;
+    --resizer-w: 5px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -28,47 +29,30 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
   /* HEADER */
   header {
-    position: fixed;
-    top: 0; left: 0; right: 0;
+    position: fixed; top: 0; left: 0; right: 0;
     height: var(--header-h);
-    background: #fff;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    gap: 16px;
-    z-index: 100;
+    background: #fff; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 16px;
+    z-index: 200;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }
-
   .logo {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--primary);
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 1.15rem; font-weight: 700;
+    color: var(--primary); white-space: nowrap;
+    display: flex; align-items: center; gap: 8px;
   }
-
-  .search-bar {
-    flex: 1;
-    max-width: 420px;
-    position: relative;
-  }
+  .search-bar { flex: 1; max-width: 420px; position: relative; }
   .search-bar input {
-    width: 100%;
-    padding: 8px 16px 8px 38px;
-    border: 1.5px solid var(--border);
-    border-radius: 24px;
-    font-size: 0.9rem;
-    outline: none;
-    background: var(--bg);
-    color: var(--text);
+    width: 100%; padding: 8px 16px 8px 38px;
+    border: 1.5px solid var(--border); border-radius: 24px;
+    font-size: 0.9rem; outline: none;
+    background: var(--bg); color: var(--text);
     transition: border-color 0.2s, box-shadow 0.2s;
     font-family: inherit;
   }
@@ -78,30 +62,18 @@
     background: #fff;
   }
   .search-icon {
-    position: absolute;
-    left: 12px; top: 50%;
+    position: absolute; left: 12px; top: 50%;
     transform: translateY(-50%);
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    pointer-events: none;
+    color: var(--text-muted); font-size: 0.95rem; pointer-events: none;
   }
-
   .header-right { margin-left: auto; }
-
   .admin-toggle-btn {
-    padding: 7px 16px;
-    border-radius: 20px;
+    padding: 7px 16px; border-radius: 20px;
     border: 1.5px solid var(--border);
-    background: #fff;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s;
-    font-family: inherit;
+    background: #fff; color: var(--text-muted);
+    font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: all 0.2s; font-family: inherit;
   }
   .admin-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
   .admin-toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
@@ -115,151 +87,137 @@
 
   /* SIDEBAR */
   aside {
-    width: var(--sidebar-width);
+    width: var(--sidebar-w);
+    min-width: 140px; max-width: 460px;
     background: var(--sidebar-bg);
-    border-right: 1px solid var(--border);
     position: fixed;
-    top: var(--header-h);
-    left: 0;
-    bottom: 0;
-    overflow-y: auto;
-    padding: 16px 12px;
+    top: var(--header-h); left: 0; bottom: 0;
+    overflow-y: auto; overflow-x: hidden;
+    padding: 14px 10px 20px;
+    z-index: 100;
   }
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
   .cat-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 8px 10px 4px;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 6px 10px 6px;
   }
 
   .cat-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    transition: all 0.15s;
-    margin-bottom: 2px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; border-radius: 10px;
+    cursor: pointer; font-size: 0.875rem; font-weight: 500;
+    color: var(--text-muted); transition: all 0.15s;
+    margin-bottom: 2px; user-select: none;
   }
   .cat-item:hover { background: var(--primary-light); color: var(--primary); }
   .cat-item.active { background: var(--primary-light); color: var(--primary); font-weight: 700; }
-  .cat-item .cat-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
-  .cat-item .cat-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cat-item .cat-count {
-    background: var(--border);
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 1px 7px;
-    border-radius: 10px;
-    min-width: 22px;
-    text-align: center;
-    flex-shrink: 0;
+
+  .cat-expand-btn {
+    width: 16px; height: 16px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; color: var(--text-muted);
+    font-size: 0.55rem; transition: all 0.15s; cursor: pointer;
+  }
+  .cat-expand-btn:hover { background: rgba(0,0,0,0.07); color: var(--primary); }
+  .cat-expand-ph { width: 16px; flex-shrink: 0; }
+
+  .cat-icon { font-size: 0.95rem; width: 18px; text-align: center; flex-shrink: 0; }
+  .cat-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-count {
+    background: var(--border); color: var(--text-muted);
+    font-size: 0.7rem; font-weight: 700;
+    padding: 1px 6px; border-radius: 10px;
+    min-width: 20px; text-align: center; flex-shrink: 0;
   }
   .cat-item.active .cat-count { background: var(--primary); color: #fff; }
 
-  /* Tree expand toggle */
-  .cat-expand-btn {
-    width: 16px; height: 16px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 4px;
-    flex-shrink: 0;
-    color: var(--text-muted);
-    font-size: 0.6rem;
-    transition: all 0.15s;
-    cursor: pointer;
-  }
-  .cat-expand-btn:hover { background: rgba(0,0,0,0.06); color: var(--primary); }
-  .cat-expand-placeholder { width: 16px; flex-shrink: 0; }
-
-  /* Child categories */
-  .cat-children { overflow: hidden; transition: max-height 0.25s ease; }
-  .cat-child {
-    padding-left: 28px !important;
-    font-size: 0.85rem !important;
-  }
-  .cat-child .cat-icon { font-size: 0.85rem !important; }
-  .cat-child-line {
-    position: relative;
-  }
-  .cat-child-line::before {
-    content: '';
-    position: absolute;
-    left: 20px;
-    top: 0; bottom: 0;
-    width: 1px;
-    background: var(--border);
-  }
-
-  .cat-admin-btns { display: none; gap: 4px; flex-shrink: 0; }
+  .cat-admin-btns { display: none; gap: 3px; flex-shrink: 0; }
   body.admin-mode .cat-admin-btns { display: flex; }
   .cat-admin-btn {
-    width: 20px; height: 20px;
-    border: none; border-radius: 5px;
-    cursor: pointer; font-size: 0.7rem;
+    width: 20px; height: 20px; border: none; border-radius: 5px;
+    cursor: pointer; font-size: 0.65rem;
     display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s; background: #fee2e2; color: #ef4444;
+    transition: all 0.15s;
   }
-  .cat-admin-btn:hover { background: #ef4444; color: #fff; }
+  .cat-admin-btn.edit { background: #e0e7ff; color: var(--primary); }
+  .cat-admin-btn.edit:hover { background: var(--primary); color: #fff; }
+  .cat-admin-btn.del  { background: #fee2e2; color: #ef4444; }
+  .cat-admin-btn.del:hover  { background: #ef4444; color: #fff; }
 
   .add-cat-btn {
-    display: none;
-    width: 100%;
-    margin-top: 10px;
-    padding: 8px;
-    border: 1.5px dashed var(--border);
-    border-radius: 10px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
+    display: none; width: 100%; margin-top: 10px;
+    padding: 8px; border: 1.5px dashed var(--border);
+    border-radius: 10px; background: transparent;
+    color: var(--text-muted); font-size: 0.85rem;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
   }
   .add-cat-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
   body.admin-mode .add-cat-btn { display: block; }
 
+  /* tree connector line */
+  .cat-subtree { position: relative; }
+  .cat-subtree::before {
+    content: ''; position: absolute;
+    left: 8px; top: 0; bottom: 4px;
+    width: 1px; background: var(--border);
+    pointer-events: none;
+  }
+
+  /* RESIZER */
+  .resizer {
+    width: var(--resizer-w);
+    position: fixed;
+    top: var(--header-h); bottom: 0;
+    left: var(--sidebar-w);
+    cursor: col-resize;
+    z-index: 150;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .resizer::after {
+    content: ''; width: 1px; height: 100%;
+    background: var(--border);
+    transition: background 0.15s, width 0.15s;
+    pointer-events: none;
+  }
+  .resizer:hover::after, .resizer.dragging::after {
+    background: var(--primary); width: 2px;
+  }
+  .resizer:hover, .resizer.dragging { background: rgba(79,110,247,0.05); }
+  .resizer-grip {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 3px;
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  }
+  .resizer:hover .resizer-grip, .resizer.dragging .resizer-grip { opacity: 1; }
+  .resizer-grip span {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--primary); display: block;
+  }
+
   /* MAIN */
   main {
-    margin-left: var(--sidebar-width);
-    flex: 1;
-    padding: 28px 32px;
+    margin-left: calc(var(--sidebar-w) + var(--resizer-w));
+    flex: 1; padding: 28px 32px; min-width: 0;
   }
-
   .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 20px;
   }
   .section-title {
-    font-size: 1.2rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    font-size: 1.2rem; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
   }
-
   .add-tool-btn {
-    display: none;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 18px;
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    border-radius: 20px;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    display: none; align-items: center; gap: 6px;
+    padding: 8px 18px; background: var(--primary);
+    color: #fff; border: none; border-radius: 20px;
+    font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(79,110,247,0.3);
     font-family: inherit;
   }
@@ -272,266 +230,165 @@
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 16px;
   }
-
   .tool-card {
-    background: var(--card-bg);
-    border: 1.5px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    text-decoration: none;
-    color: inherit;
+    background: var(--card-bg); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 20px;
+    cursor: pointer; transition: all 0.2s;
+    position: relative; display: flex;
+    flex-direction: column; gap: 10px;
+    text-decoration: none; color: inherit;
   }
   .tool-card:hover {
     border-color: var(--primary);
     box-shadow: var(--shadow-hover);
     transform: translateY(-2px);
   }
-
   .card-top { display: flex; align-items: flex-start; gap: 12px; }
   .card-icon {
-    width: 44px; height: 44px;
-    border-radius: 12px;
+    width: 44px; height: 44px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem;
-    flex-shrink: 0;
+    font-size: 1.4rem; flex-shrink: 0;
   }
   .card-info { flex: 1; min-width: 0; }
   .card-name {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 0.95rem; font-weight: 700; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     margin-bottom: 4px;
   }
   .card-tags { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
   .card-cat-tag {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--primary);
-    background: var(--primary-light);
-    padding: 2px 8px;
-    border-radius: 6px;
-    display: inline-block;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--primary); background: var(--primary-light);
+    padding: 2px 8px; border-radius: 6px; display: inline-block;
   }
   .card-type-tag {
-    font-size: 0.68rem;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
+    font-size: 0.68rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 6px;
+    display: inline-flex; align-items: center; gap: 3px;
   }
-  .card-type-tag.url {
-    color: #0891b2;
-    background: #e0f7fa;
-  }
-  .card-type-tag.html {
-    color: #059669;
-    background: #d1fae5;
-  }
+  .card-type-tag.url  { color: #0891b2; background: #e0f7fa; }
+  .card-type-tag.html { color: #059669; background: #d1fae5; }
   .card-desc {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
   }
-
   .card-admin-overlay {
-    display: none;
-    position: absolute;
-    top: 8px; right: 8px;
-    gap: 5px;
+    display: none; position: absolute;
+    top: 8px; right: 8px; gap: 5px;
   }
   body.admin-mode .card-admin-overlay { display: flex; }
   .card-edit-btn, .card-del-btn {
-    width: 26px; height: 26px;
-    border: none; border-radius: 7px;
+    width: 26px; height: 26px; border: none; border-radius: 7px;
     cursor: pointer; font-size: 0.75rem;
     display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    transition: all 0.15s; box-shadow: 0 1px 4px rgba(0,0,0,0.15);
   }
   .card-edit-btn { background: #fff; color: var(--primary); }
   .card-edit-btn:hover { background: var(--primary); color: #fff; }
-  .card-del-btn { background: #fff; color: #ef4444; }
-  .card-del-btn:hover { background: #ef4444; color: #fff; }
-
+  .card-del-btn  { background: #fff; color: #ef4444; }
+  .card-del-btn:hover  { background: #ef4444; color: #fff; }
   .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-muted);
-    grid-column: 1 / -1;
+    text-align: center; padding: 60px 20px;
+    color: var(--text-muted); grid-column: 1/-1;
   }
   .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
 
   /* MODAL */
   .modal-overlay {
-    display: none;
-    position: fixed; inset: 0;
+    display: none; position: fixed; inset: 0;
     background: rgba(0,0,0,0.45);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
+    z-index: 9999; align-items: center; justify-content: center;
   }
   .modal-overlay.open { display: flex; }
   .modal {
-    background: #fff;
-    border-radius: 20px;
-    padding: 28px 32px;
-    width: 90%;
-    max-width: 480px;
+    background: #fff; border-radius: 20px;
+    padding: 28px 32px; width: 90%; max-width: 480px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     animation: modalIn 0.2s ease;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: 90vh; overflow-y: auto;
   }
   @keyframes modalIn {
     from { transform: scale(0.94); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    to   { transform: scale(1);    opacity: 1; }
   }
   .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
 
   .form-group { margin-bottom: 16px; }
   .form-group label {
-    display: block;
-    font-size: 0.83rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 6px;
+    display: block; font-size: 0.83rem; font-weight: 600;
+    color: var(--text-muted); margin-bottom: 6px;
   }
-  .form-group input, .form-group textarea, .form-group select {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    font-size: 0.9rem;
-    font-family: inherit;
-    outline: none;
-    color: var(--text);
-    transition: border-color 0.2s;
-    background: #fff;
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 0.9rem; font-family: inherit;
+    outline: none; color: var(--text);
+    transition: border-color 0.2s; background: #fff;
   }
-  .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(79,110,247,0.1);
   }
   .form-group textarea { resize: vertical; min-height: 72px; }
 
-  /* Type selector pill */
   .type-selector {
-    display: flex;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    background: var(--bg);
+    display: flex; border: 1.5px solid var(--border);
+    border-radius: 10px; overflow: hidden; background: var(--bg);
   }
   .type-selector-btn {
-    flex: 1;
-    padding: 9px 0;
-    border: none;
-    background: transparent;
-    font-size: 0.9rem;
-    font-family: inherit;
-    font-weight: 500;
-    color: var(--text-muted);
-    cursor: pointer;
+    flex: 1; padding: 9px 0; border: none;
+    background: transparent; font-size: 0.9rem;
+    font-family: inherit; font-weight: 500;
+    color: var(--text-muted); cursor: pointer;
     transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
   }
-  .type-selector-btn.active {
-    background: var(--primary);
-    color: #fff;
-    font-weight: 700;
-  }
+  .type-selector-btn.active { background: var(--primary); color: #fff; font-weight: 700; }
   .type-selector-btn:not(.active):hover { background: var(--primary-light); color: var(--primary); }
 
-  .emoji-picker-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 8px;
-  }
+  .emoji-picker-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
   .emoji-opt {
-    width: 36px; height: 36px;
-    border: 1.5px solid var(--border);
-    border-radius: 9px;
-    font-size: 1.15rem;
+    width: 36px; height: 36px; border: 1.5px solid var(--border);
+    border-radius: 9px; font-size: 1.15rem;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: all 0.15s;
+    cursor: pointer; transition: all 0.15s;
   }
   .emoji-opt:hover, .emoji-opt.selected { border-color: var(--primary); background: var(--primary-light); }
 
   .color-picker-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   .color-opt {
-    width: 28px; height: 28px;
-    border-radius: 7px;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.15s;
-    outline: 1px solid #ddd;
+    width: 28px; height: 28px; border-radius: 7px;
+    border: 2px solid transparent; cursor: pointer;
+    transition: all 0.15s; outline: 1px solid #ddd;
   }
   .color-opt:hover, .color-opt.selected { border-color: var(--primary); transform: scale(1.2); outline-color: var(--primary); }
 
   .modal-btns {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 22px;
+    display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px;
   }
   .btn-cancel {
-    padding: 9px 20px;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
+    padding: 9px 20px; border: 1.5px solid var(--border);
+    border-radius: 10px; background: #fff;
+    color: var(--text-muted); font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; font-family: inherit;
   }
   .btn-cancel:hover { border-color: var(--text-muted); }
   .btn-confirm {
-    padding: 9px 24px;
-    border: none;
-    border-radius: 10px;
-    background: var(--primary);
-    color: #fff;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(79,110,247,0.3);
-    font-family: inherit;
+    padding: 9px 24px; border: none; border-radius: 10px;
+    background: var(--primary); color: #fff;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(79,110,247,0.3); font-family: inherit;
   }
   .btn-confirm:hover { box-shadow: 0 4px 14px rgba(79,110,247,0.4); }
 
-  .admin-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
-
-  /* parent select option hint */
-  .parent-none-hint { color: var(--text-muted); font-style: italic; }
-
-  aside::-webkit-scrollbar { width: 4px; }
-  aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
   @media (max-width: 768px) {
-    :root { --sidebar-width: 0px; }
-    aside { display: none; }
-    main { margin-left: 0; padding: 20px 16px; }
+    aside, .resizer { display: none; }
+    main { margin-left: 0 !important; padding: 20px 16px; }
   }
 </style>
 </head>
@@ -549,12 +406,19 @@
 </header>
 
 <div class="layout">
-  <aside>
+  <aside id="sidebar">
     <div class="cat-label">分类</div>
     <div id="catList"></div>
     <button class="add-cat-btn" onclick="openAddCatModal()">＋ 新增分类</button>
   </aside>
-  <main>
+
+  <div class="resizer" id="resizer">
+    <div class="resizer-grip">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <main id="mainArea">
     <div class="section-header">
       <div class="section-title">
         <span id="sectionIcon">🏠</span>
@@ -570,7 +434,6 @@
 <div class="modal-overlay" id="toolModal">
   <div class="modal">
     <h3 id="toolModalTitle">➕ 添加工具</h3>
-    <!-- 类型选择 -->
     <div class="form-group">
       <label>类型 *</label>
       <div class="type-selector">
@@ -609,7 +472,7 @@
   </div>
 </div>
 
-<!-- 分类弹窗 -->
+<!-- 分类弹窗（新增 & 编辑复用） -->
 <div class="modal-overlay" id="catModal">
   <div class="modal">
     <h3 id="catModalTitle">📁 新增分类</h3>
@@ -619,9 +482,7 @@
     </div>
     <div class="form-group">
       <label>上级分类（可选）</label>
-      <select id="catParent">
-        <option value="">— 顶级分类（无上级）—</option>
-      </select>
+      <select id="catParent"></select>
     </div>
     <div class="form-group">
       <label>分类图标</label>
@@ -640,7 +501,8 @@
     <h3>🔐 进入管理模式</h3>
     <div class="form-group">
       <label>管理员密码</label>
-      <input type="password" id="adminPwdInput" placeholder="输入密码…" onkeydown="if(event.key==='Enter')verifyAdmin()">
+      <input type="password" id="adminPwdInput" placeholder="输入密码…"
+             onkeydown="if(event.key==='Enter')verifyAdmin()">
     </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('adminModal')">取消</button>
@@ -650,148 +512,134 @@
 </div>
 
 <script>
-// ==================== 可配置项 ====================
-// 密码已哈希存储，如需修改密码：在浏览器控制台执行
-// crypto.subtle.digest('SHA-256', new TextEncoder().encode('新密码')).then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-// 获取新哈希值后替换下方字符串
+// ── 配置 ──────────────────────────────────────────────────────────────────────
+// 修改密码：浏览器控制台执行
+// crypto.subtle.digest('SHA-256',new TextEncoder().encode('新密码')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
 const ADMIN_PASSWORD_HASH = 'dbecea14bd9749898d6431f16d8191c1e8084379660ed4e293b18d36510ab610';
 
-// ==================== 默认数据 ====================
+// ── 默认数据 ──────────────────────────────────────────────────────────────────
 const DEFAULT_DATA = {
   categories: [
     { id: 'excel', name: 'Excel工具', icon: '📊' },
-    { id: 'web', name: '常用网站', icon: '🌐' }
+    { id: 'web',   name: '常用网站', icon: '🌐'  }
   ],
   tools: [
-    {
-      id: 't1',
-      name: 'EXCEL合并工具',
-      url: 'tools/EXCEL合并.html',
-      type: 'html',
-      desc: '将多个Excel/CSV文件按列名映射智能合并，支持列名重命名、空行过滤和预览导出。',
-      cat: 'excel',
-      icon: '🔗',
-      color: '#dbeafe'
-    },
-    {
-      id: 't2',
-      name: 'EXCEL笛卡尔积处理工具',
-      url: 'tools/EXCEL笛卡尔积工具.html',
-      type: 'html',
-      desc: '对Excel数据列进行笛卡尔积组合，快速生成所有可能的组合结果。',
-      cat: 'excel',
-      icon: '⚡',
-      color: '#ede9fe'
-    }
+    { id:'t1', name:'EXCEL合并工具',     url:'tools/EXCEL合并.html',         type:'html', desc:'将多个Excel/CSV文件按列名映射智能合并，支持列名重命名、空行过滤和预览导出。', cat:'excel', icon:'🔗', color:'#dbeafe' },
+    { id:'t2', name:'EXCEL笛卡尔积处理', url:'tools/EXCEL笛卡尔积工具.html', type:'html', desc:'对Excel数据列进行笛卡尔积组合，快速生成所有可能的组合结果。',               cat:'excel', icon:'⚡', color:'#ede9fe' }
   ]
 };
 
 const EMOJIS = ['📊','🔗','⚡','🛠️','📄','📋','🗂️','🔍','📈','📉','💡','🧮','🧰','📦','🔧','✂️','🖨️','💾','📥','📤','🎯','🔄','⚙️','🧩','🌐','📌','🗃️','📝','🖥️','📱','🔐'];
-const COLORS = ['#dbeafe','#ede9fe','#dcfce7','#fef9c3','#fce7f3','#ffedd5','#e0f2fe','#f1f5f9','#fef2f2','#ecfdf5','#fff7ed','#f0fdf4'];
+const COLORS  = ['#dbeafe','#ede9fe','#dcfce7','#fef9c3','#fce7f3','#ffedd5','#e0f2fe','#f1f5f9','#fef2f2','#ecfdf5','#fff7ed','#f0fdf4'];
 
-// ==================== 状态 ====================
-const STORAGE_KEY = 'nav_data_v2';
+// ── 状态 ──────────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'nav_data_v3';
 let data = (() => {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) return JSON.parse(s);
-    // 尝试迁移旧版数据
-    const old = localStorage.getItem('nav_data_v1');
-    if (old) {
-      const d = JSON.parse(old);
-      // 迁移旧工具，添加 type 字段
-      d.tools = (d.tools || []).map(t => ({ type: 'html', ...t }));
-      return d;
+    for (const k of ['nav_data_v2','nav_data_v1']) {
+      const old = localStorage.getItem(k);
+      if (old) { const d = JSON.parse(old); d.tools = (d.tools||[]).map(t=>({type:'html',...t})); return d; }
     }
   } catch(e) {}
   return JSON.parse(JSON.stringify(DEFAULT_DATA));
 })();
 
-let currentCat = 'all';
-let isAdmin = false;
+let currentCat    = 'all';
+let isAdmin       = false;
 let editingToolId = null;
-let selEmoji = EMOJIS[0];
-let selColor = COLORS[0];
-let selCatEmoji = '📁';
-let selToolType = 'html'; // 'html' | 'url'
-// 分类展开状态（id -> bool），默认展开
-let catExpanded = {};
+let editingCatId  = null;   // null = 新增模式
+let selEmoji      = EMOJIS[0];
+let selColor      = COLORS[0];
+let selCatEmoji   = '📁';
+let selToolType   = 'html';
+let catExpanded   = {};     // catId -> bool (undefined 视为 true)
 
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function save()  { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function genId() { return 'id' + Date.now() + Math.floor(Math.random()*999); }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s)  {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-// ==================== 获取分类下所有工具（含子分类） ====================
-function getDescendantCatIds(catId) {
+// ── 树形工具 ──────────────────────────────────────────────────────────────────
+// 递归获取某节点及其所有后代的 id
+function getAllDescendantIds(catId) {
   const ids = [catId];
-  data.categories.filter(c => c.parentId === catId).forEach(child => {
-    ids.push(...getDescendantCatIds(child.id));
-  });
+  data.categories
+    .filter(c => c.parentId === catId)
+    .forEach(child => ids.push(...getAllDescendantIds(child.id)));
   return ids;
 }
 
+// 获取分类（含后代）下的工具
 function getToolsByCat(catId) {
   if (catId === 'all') return data.tools;
-  const ids = getDescendantCatIds(catId);
+  const ids = getAllDescendantIds(catId);
   return data.tools.filter(t => ids.includes(t.cat));
 }
 
-// ==================== 侧栏（树状） ====================
+// 判断将 catId 移到 newParentId 下是否会造成循环
+function wouldCreateCycle(catId, newParentId) {
+  if (!newParentId) return false;
+  return getAllDescendantIds(catId).includes(newParentId);
+}
+
+// ── 侧栏（递归树） ────────────────────────────────────────────────────────────
 function renderSidebar() {
   const allCount = data.tools.length;
   let html = `<div class="cat-item ${currentCat==='all'?'active':''}" onclick="selectCat('all')">
-    <span class="cat-expand-placeholder"></span>
-    <span class="cat-icon">🏠</span><span class="cat-name">全部工具</span>
+    <span class="cat-expand-ph"></span>
+    <span class="cat-icon">🏠</span>
+    <span class="cat-name">全部工具</span>
     <span class="cat-count">${allCount}</span>
   </div>`;
-
-  // 顶级分类
-  const rootCats = data.categories.filter(c => !c.parentId);
-  rootCats.forEach(cat => {
-    const children = data.categories.filter(c => c.parentId === cat.id);
-    const totalCount = getToolsByCat(cat.id).length;
-    const isExpanded = catExpanded[cat.id] !== false; // 默认展开
-
-    if (children.length > 0) {
-      html += `<div class="cat-item ${currentCat===cat.id?'active':''}" onclick="selectCat('${cat.id}')">
-        <span class="cat-expand-btn" onclick="event.stopPropagation();toggleCatExpand('${cat.id}')" title="${isExpanded?'收起':'展开'}">${isExpanded?'▼':'▶'}</span>
-        <span class="cat-icon">${cat.icon}</span>
-        <span class="cat-name">${esc(cat.name)}</span>
-        <span class="cat-count">${totalCount}</span>
-        <div class="cat-admin-btns">
-          <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${cat.id}')" title="删除分类">🗑</button>
-        </div>
-      </div>`;
-      if (isExpanded) {
-        html += `<div class="cat-child-line">`;
-        children.forEach(child => {
-          const cnt = getToolsByCat(child.id).length;
-          html += `<div class="cat-item cat-child ${currentCat===child.id?'active':''}" onclick="selectCat('${child.id}')">
-            <span class="cat-expand-placeholder"></span>
-            <span class="cat-icon">${child.icon}</span>
-            <span class="cat-name">${esc(child.name)}</span>
-            <span class="cat-count">${cnt}</span>
-            <div class="cat-admin-btns">
-              <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${child.id}')" title="删除分类">🗑</button>
-            </div>
-          </div>`;
-        });
-        html += `</div>`;
-      }
-    } else {
-      html += `<div class="cat-item ${currentCat===cat.id?'active':''}" onclick="selectCat('${cat.id}')">
-        <span class="cat-expand-placeholder"></span>
-        <span class="cat-icon">${cat.icon}</span>
-        <span class="cat-name">${esc(cat.name)}</span>
-        <span class="cat-count">${totalCount}</span>
-        <div class="cat-admin-btns">
-          <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${cat.id}')" title="删除分类">🗑</button>
-        </div>
-      </div>`;
-    }
-  });
-
+  data.categories
+    .filter(c => !c.parentId)
+    .forEach(cat => { html += renderCatNode(cat, 0); });
   document.getElementById('catList').innerHTML = html;
+}
+
+function renderCatNode(cat, depth) {
+  const children   = data.categories.filter(c => c.parentId === cat.id);
+  const hasKids    = children.length > 0;
+  const isExpanded = catExpanded[cat.id] !== false;
+  const count      = getToolsByCat(cat.id).length;
+  const indentPx   = depth * 14;
+
+  const expandBtn = hasKids
+    ? `<span class="cat-expand-btn"
+          onclick="event.stopPropagation();toggleCatExpand('${cat.id}')"
+          title="${isExpanded?'收起':'展开'}">${isExpanded?'▼':'▶'}</span>`
+    : `<span class="cat-expand-ph"></span>`;
+
+  let html = `<div class="cat-item ${currentCat===cat.id?'active':''}"
+    style="padding-left:${10+indentPx}px"
+    onclick="selectCat('${cat.id}')">
+    ${expandBtn}
+    <span class="cat-icon">${cat.icon}</span>
+    <span class="cat-name">${esc(cat.name)}</span>
+    <span class="cat-count">${count}</span>
+    <div class="cat-admin-btns">
+      <button class="cat-admin-btn edit"
+        onclick="event.stopPropagation();openEditCatModal('${cat.id}')"
+        title="编辑分类">✏️</button>
+      <button class="cat-admin-btn del"
+        onclick="event.stopPropagation();deleteCat('${cat.id}')"
+        title="删除分类">🗑</button>
+    </div>
+  </div>`;
+
+  if (hasKids && isExpanded) {
+    // 子树容器，左侧竖线偏移同父级缩进+expand按钮区域
+    const lineLeft = 10 + indentPx + 8;
+    html += `<div class="cat-subtree" style="margin-left:${lineLeft}px">`;
+    children.forEach(child => { html += renderCatNode(child, depth + 1); });
+    html += `</div>`;
+  }
+  return html;
 }
 
 function toggleCatExpand(catId) {
@@ -799,24 +647,30 @@ function toggleCatExpand(catId) {
   renderSidebar();
 }
 
-// ==================== 卡片 ====================
+// ── 卡片 ──────────────────────────────────────────────────────────────────────
 function renderCards(tools) {
   const grid = document.getElementById('cardsGrid');
   if (!tools.length) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>暂无工具${isAdmin?'，点击右上角"添加工具"来添加':''}</p></div>`;
+    grid.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <p>暂无工具${isAdmin?'，点击右上角"添加工具"来添加':''}</p>
+    </div>`;
     return;
   }
   grid.innerHTML = tools.map(t => {
     const catName = data.categories.find(c => c.id === t.cat)?.name || '';
-    const isUrl = t.type === 'url';
+    const isUrl   = t.type === 'url';
     const typeTag = isUrl
       ? `<span class="card-type-tag url">🌐 网址</span>`
       : `<span class="card-type-tag html">⚙️ 功能</span>`;
-    const href = t.url;
-    return `<a class="tool-card" href="${esc(href)}" target="_blank" rel="noopener">
+    return `<a class="tool-card" href="${esc(t.url)}" target="_blank" rel="noopener">
       <div class="card-admin-overlay">
-        <button class="card-edit-btn" onclick="event.preventDefault();event.stopPropagation();openEditToolModal('${t.id}')" title="编辑">✏️</button>
-        <button class="card-del-btn" onclick="event.preventDefault();event.stopPropagation();deleteTool('${t.id}')" title="删除">🗑</button>
+        <button class="card-edit-btn"
+          onclick="event.preventDefault();event.stopPropagation();openEditToolModal('${t.id}')"
+          title="编辑">✏️</button>
+        <button class="card-del-btn"
+          onclick="event.preventDefault();event.stopPropagation();deleteTool('${t.id}')"
+          title="删除">🗑</button>
       </div>
       <div class="card-top">
         <div class="card-icon" style="background:${t.color||'#f1f5f9'}">${t.icon||'🛠️'}</div>
@@ -824,7 +678,7 @@ function renderCards(tools) {
           <div class="card-name">${esc(t.name)}</div>
           <div class="card-tags">
             ${typeTag}
-            ${catName ? `<span class="card-cat-tag">${esc(catName)}</span>` : ''}
+            ${catName?`<span class="card-cat-tag">${esc(catName)}</span>`:''}
           </div>
         </div>
       </div>
@@ -835,9 +689,9 @@ function renderCards(tools) {
 
 function selectCat(catId) {
   currentCat = catId;
-  const cat = data.categories.find(c => c.id === catId);
-  document.getElementById('sectionIcon').textContent = catId === 'all' ? '🏠' : (cat?.icon || '📁');
-  document.getElementById('sectionTitle').textContent = catId === 'all' ? '全部工具' : (cat?.name || '');
+  const cat  = data.categories.find(c => c.id === catId);
+  document.getElementById('sectionIcon').textContent  = catId==='all' ? '🏠' : (cat?.icon||'📁');
+  document.getElementById('sectionTitle').textContent = catId==='all' ? '全部工具' : (cat?.name||'');
   document.getElementById('searchInput').value = '';
   renderCards(getToolsByCat(catId));
   renderSidebar();
@@ -846,11 +700,12 @@ function selectCat(catId) {
 function handleSearch() {
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
   if (!q) { selectCat(currentCat); return; }
-  const base = getToolsByCat(currentCat);
-  renderCards(base.filter(t => t.name.toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q)));
+  renderCards(getToolsByCat(currentCat).filter(
+    t => t.name.toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q)
+  ));
 }
 
-// ==================== 管理模式 ====================
+// ── 管理模式 ──────────────────────────────────────────────────────────────────
 function toggleAdminMode() {
   if (isAdmin) {
     isAdmin = false;
@@ -867,10 +722,9 @@ function toggleAdminMode() {
 
 async function verifyAdmin() {
   const pwd = document.getElementById('adminPwdInput').value;
-  const encoded = new TextEncoder().encode(pwd);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
-  const hashHex = [...new Uint8Array(hashBuffer)].map(x => x.toString(16).padStart(2, '0')).join('');
-  if (hashHex === ADMIN_PASSWORD_HASH) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
+  const hex = [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  if (hex === ADMIN_PASSWORD_HASH) {
     isAdmin = true;
     document.body.classList.add('admin-mode');
     const btn = document.getElementById('adminToggleBtn');
@@ -880,60 +734,59 @@ async function verifyAdmin() {
   } else {
     const inp = document.getElementById('adminPwdInput');
     inp.style.borderColor = '#ef4444';
-    inp.value = '';
-    inp.placeholder = '❌ 密码错误，请重试';
-    setTimeout(() => { inp.style.borderColor = ''; inp.placeholder = '输入密码…'; }, 1800);
+    inp.value = ''; inp.placeholder = '❌ 密码错误，请重试';
+    setTimeout(() => { inp.style.borderColor=''; inp.placeholder='输入密码…'; }, 1800);
   }
 }
 
-// ==================== 工具类型切换 ====================
+// ── 工具类型切换 ──────────────────────────────────────────────────────────────
 function switchToolType(type) {
   selToolType = type;
-  document.getElementById('typeHtmlBtn').classList.toggle('active', type === 'html');
-  document.getElementById('typeUrlBtn').classList.toggle('active', type === 'url');
-  const urlInput = document.getElementById('toolUrl');
-  if (type === 'url') {
-    urlInput.placeholder = '例：https://yhtools.top/';
-  } else {
-    urlInput.placeholder = '例：tools/EXCEL合并.html';
-  }
+  document.getElementById('typeHtmlBtn').classList.toggle('active', type==='html');
+  document.getElementById('typeUrlBtn').classList.toggle('active',  type==='url');
+  document.getElementById('toolUrl').placeholder =
+    type==='url' ? '例：https://yhtools.top/' : '例：tools/EXCEL合并.html';
 }
 
-// ==================== 工具弹窗 ====================
+// ── Picker 构建 ───────────────────────────────────────────────────────────────
 function buildEmojiPicker(containerId, selected, fn) {
   document.getElementById(containerId).innerHTML = EMOJIS.map(e =>
     `<div class="emoji-opt ${e===selected?'selected':''}" onclick="${fn}('${e}',this)">${e}</div>`
   ).join('');
 }
-
 function buildColorPicker(selected) {
   document.getElementById('colorPicker').innerHTML = COLORS.map(c =>
     `<div class="color-opt ${c===selected?'selected':''}" style="background:${c}" onclick="pickColor('${c}',this)"></div>`
   ).join('');
 }
-
 function pickEmoji(e, el) {
   selEmoji = e;
-  document.querySelectorAll('#emojiPicker .emoji-opt').forEach(x => x.classList.remove('selected'));
+  document.querySelectorAll('#emojiPicker .emoji-opt').forEach(x=>x.classList.remove('selected'));
   el.classList.add('selected');
 }
-
 function pickColor(c, el) {
   selColor = c;
-  document.querySelectorAll('#colorPicker .color-opt').forEach(x => x.classList.remove('selected'));
+  document.querySelectorAll('#colorPicker .color-opt').forEach(x=>x.classList.remove('selected'));
   el.classList.add('selected');
 }
-
 function pickCatEmoji(e, el) {
   selCatEmoji = e;
-  document.querySelectorAll('#catEmojiPicker .emoji-opt').forEach(x => x.classList.remove('selected'));
+  document.querySelectorAll('#catEmojiPicker .emoji-opt').forEach(x=>x.classList.remove('selected'));
   el.classList.add('selected');
 }
 
+// ── 工具弹窗分类下拉（含层级缩进） ────────────────────────────────────────────
 function fillCatSelect(selectedId) {
-  document.getElementById('toolCat').innerHTML = data.categories.map(c =>
-    `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${c.icon} ${c.name}</option>`
-  ).join('') || '<option value="">（暂无分类，请先添加）</option>';
+  let opts = '';
+  function walk(cats, depth) {
+    cats.forEach(c => {
+      const prefix = depth ? '　'.repeat(depth) + '└ ' : '';
+      opts += `<option value="${c.id}" ${c.id===selectedId?'selected':''}>${prefix}${c.icon} ${c.name}</option>`;
+      walk(data.categories.filter(k => k.parentId === c.id), depth + 1);
+    });
+  }
+  walk(data.categories.filter(c => !c.parentId), 0);
+  document.getElementById('toolCat').innerHTML = opts || '<option value="">（暂无分类，请先添加）</option>';
 }
 
 function openAddToolModal() {
@@ -941,7 +794,7 @@ function openAddToolModal() {
   selEmoji = EMOJIS[0]; selColor = COLORS[0]; selToolType = 'html';
   document.getElementById('toolModalTitle').textContent = '➕ 添加工具';
   document.getElementById('toolName').value = '';
-  document.getElementById('toolUrl').value = '';
+  document.getElementById('toolUrl').value  = '';
   document.getElementById('toolDesc').value = '';
   switchToolType('html');
   fillCatSelect(currentCat !== 'all' ? currentCat : data.categories[0]?.id);
@@ -954,12 +807,12 @@ function openEditToolModal(id) {
   const t = data.tools.find(x => x.id === id);
   if (!t) return;
   editingToolId = id;
-  selEmoji = t.icon || EMOJIS[0];
-  selColor = t.color || COLORS[0];
-  selToolType = t.type || 'html';
+  selEmoji    = t.icon  || EMOJIS[0];
+  selColor    = t.color || COLORS[0];
+  selToolType = t.type  || 'html';
   document.getElementById('toolModalTitle').textContent = '✏️ 编辑工具';
   document.getElementById('toolName').value = t.name;
-  document.getElementById('toolUrl').value = t.url;
+  document.getElementById('toolUrl').value  = t.url;
   document.getElementById('toolDesc').value = t.desc || '';
   switchToolType(selToolType);
   fillCatSelect(t.cat);
@@ -970,97 +823,188 @@ function openEditToolModal(id) {
 
 function saveToolModal() {
   const name = document.getElementById('toolName').value.trim();
-  const url = document.getElementById('toolUrl').value.trim();
+  const url  = document.getElementById('toolUrl').value.trim();
   const desc = document.getElementById('toolDesc').value.trim();
-  const cat = document.getElementById('toolCat').value;
+  const cat  = document.getElementById('toolCat').value;
   if (!name) { alert('请填写名称'); return; }
-  if (!url) { alert('请填写链接'); return; }
+  if (!url)  { alert('请填写链接'); return; }
   if (selToolType === 'url' && !/^https?:\/\//i.test(url)) {
     alert('网址类型的链接需以 http:// 或 https:// 开头'); return;
   }
-
   if (editingToolId) {
     const t = data.tools.find(x => x.id === editingToolId);
     if (t) Object.assign(t, { name, url, desc, cat, type: selToolType, icon: selEmoji, color: selColor });
   } else {
     data.tools.push({ id: genId(), name, url, desc, cat, type: selToolType, icon: selEmoji, color: selColor });
   }
-  save();
-  closeModal('toolModal');
-  selectCat(currentCat);
+  save(); closeModal('toolModal'); selectCat(currentCat);
 }
 
 function deleteTool(id) {
   if (!confirm('确定删除此工具？')) return;
   data.tools = data.tools.filter(t => t.id !== id);
-  save();
-  selectCat(currentCat);
+  save(); selectCat(currentCat);
 }
 
-// ==================== 分类弹窗 ====================
+// ── 分类弹窗：构建父级下拉（树形缩进，排除指定节点） ─────────────────────────
+function buildCatParentSelect(selectedParentId, excludeIds = []) {
+  let opts = '<option value="">— 顶级分类（无上级）—</option>';
+  function walk(cats, depth) {
+    cats.forEach(c => {
+      if (excludeIds.includes(c.id)) return;
+      const prefix = depth ? '　'.repeat(depth) + '└ ' : '';
+      opts += `<option value="${c.id}" ${c.id===selectedParentId?'selected':''}>${prefix}${c.icon} ${c.name}</option>`;
+      walk(data.categories.filter(k => k.parentId === c.id), depth + 1);
+    });
+  }
+  walk(data.categories.filter(c => !c.parentId), 0);
+  document.getElementById('catParent').innerHTML = opts;
+}
+
 function openAddCatModal() {
-  selCatEmoji = '📁';
-  document.getElementById('catName').value = '';
+  editingCatId = null;
+  selCatEmoji  = '📁';
   document.getElementById('catModalTitle').textContent = '📁 新增分类';
+  document.getElementById('catName').value = '';
+  buildCatParentSelect('');
+  buildEmojiPicker('catEmojiPicker', selCatEmoji, 'pickCatEmoji');
+  openModal('catModal');
+}
 
-  // 填充上级分类选项（只允许顶级分类作为父级，防止多层嵌套过深）
-  const rootCats = data.categories.filter(c => !c.parentId);
-  document.getElementById('catParent').innerHTML =
-    `<option value="">— 顶级分类（无上级）—</option>` +
-    rootCats.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
-
+function openEditCatModal(id) {
+  const cat = data.categories.find(c => c.id === id);
+  if (!cat) return;
+  editingCatId = id;
+  selCatEmoji  = cat.icon || '📁';
+  document.getElementById('catModalTitle').textContent = '✏️ 编辑分类';
+  document.getElementById('catName').value = cat.name;
+  // 从父级选项中排除自身及所有后代，防止循环引用
+  buildCatParentSelect(cat.parentId || '', getAllDescendantIds(id));
   buildEmojiPicker('catEmojiPicker', selCatEmoji, 'pickCatEmoji');
   openModal('catModal');
 }
 
 function saveCatModal() {
-  const name = document.getElementById('catName').value.trim();
+  const name     = document.getElementById('catName').value.trim();
   const parentId = document.getElementById('catParent').value || null;
   if (!name) { alert('请填写分类名称'); return; }
 
-  const newCat = { id: genId(), name, icon: selCatEmoji };
-  if (parentId) newCat.parentId = parentId;
-  data.categories.push(newCat);
-  save();
-  closeModal('catModal');
-  renderSidebar();
+  if (editingCatId) {
+    if (wouldCreateCycle(editingCatId, parentId)) {
+      alert('不能将分类移到其自身的子分类下'); return;
+    }
+    const cat = data.categories.find(c => c.id === editingCatId);
+    if (cat) {
+      cat.name = name;
+      cat.icon = selCatEmoji;
+      if (parentId) cat.parentId = parentId;
+      else delete cat.parentId;
+    }
+    // 刷新标题（如果正在浏览该分类）
+    if (currentCat === editingCatId) {
+      document.getElementById('sectionIcon').textContent  = selCatEmoji;
+      document.getElementById('sectionTitle').textContent = name;
+    }
+  } else {
+    const newCat = { id: genId(), name, icon: selCatEmoji };
+    if (parentId) newCat.parentId = parentId;
+    data.categories.push(newCat);
+  }
+
+  save(); closeModal('catModal'); renderSidebar();
 }
 
 function deleteCat(id) {
-  // 同时检查子分类
-  const childIds = data.categories.filter(c => c.parentId === id).map(c => c.id);
-  const allIds = [id, ...childIds];
-  const cnt = data.tools.filter(t => allIds.includes(t.cat)).length;
-  const hasChildren = childIds.length > 0;
+  const descIds = getAllDescendantIds(id).slice(1);  // 后代（不含自身）
+  const allIds  = [id, ...descIds];
+  const cnt     = data.tools.filter(t => allIds.includes(t.cat)).length;
 
   let msg = '';
-  if (hasChildren && cnt > 0) {
-    msg = `该分类包含 ${childIds.length} 个子分类，共 ${cnt} 个工具（工具本身不会删除）。确定删除该分类及其所有子分类？`;
-  } else if (hasChildren) {
-    msg = `该分类包含 ${childIds.length} 个子分类，确定删除该分类及其所有子分类？`;
-  } else if (cnt > 0) {
-    msg = `该分类下有 ${cnt} 个工具（工具本身不会删除，仅移出分类）。确定删除分类？`;
-  } else {
+  if (descIds.length && cnt)
+    msg = `该分类含 ${descIds.length} 个子分类，共 ${cnt} 个工具（工具保留，仅移出分类）。确定删除？`;
+  else if (descIds.length)
+    msg = `该分类含 ${descIds.length} 个子分类，将一并删除。确定？`;
+  else if (cnt)
+    msg = `该分类下有 ${cnt} 个工具（工具保留，仅移出分类）。确定删除？`;
+  else
     msg = '确定删除此分类？';
-  }
 
   if (!confirm(msg)) return;
   data.categories = data.categories.filter(c => !allIds.includes(c.id));
   if (allIds.includes(currentCat)) currentCat = 'all';
-  save();
-  renderSidebar();
-  selectCat(currentCat);
+  save(); renderSidebar(); selectCat(currentCat);
 }
 
-// ==================== 弹窗控制 ====================
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+// ── 弹窗控制 ──────────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
 
-// ==================== 初始化 ====================
+// ── 可拖拽分割线 ──────────────────────────────────────────────────────────────
+(function initResizer() {
+  const resizerEl = document.getElementById('resizer');
+  const sidebarEl = document.getElementById('sidebar');
+  const mainEl    = document.getElementById('mainArea');
+  const MIN_W = 140, MAX_W = 480, RESIZER_PX = 5;
+
+  function applyWidth(w) {
+    w = Math.max(MIN_W, Math.min(MAX_W, w));
+    sidebarEl.style.width       = w + 'px';
+    resizerEl.style.left        = w + 'px';
+    mainEl.style.marginLeft     = (w + RESIZER_PX) + 'px';
+    document.documentElement.style.setProperty('--sidebar-w', w + 'px');
+    try { localStorage.setItem('nav_sidebar_w', w); } catch(e) {}
+  }
+
+  // 恢复上次宽度
+  try {
+    const saved = parseInt(localStorage.getItem('nav_sidebar_w') || '');
+    if (saved >= MIN_W && saved <= MAX_W) applyWidth(saved);
+  } catch(e) {}
+
+  let dragging = false, startX = 0, startW = 0;
+
+  resizerEl.addEventListener('mousedown', e => {
+    dragging = true;
+    startX = e.clientX;
+    startW = sidebarEl.getBoundingClientRect().width;
+    resizerEl.classList.add('dragging');
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    applyWidth(startW + (e.clientX - startX));
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    resizerEl.classList.remove('dragging');
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
+  });
+
+  // 触摸支持
+  resizerEl.addEventListener('touchstart', e => {
+    dragging = true;
+    startX = e.touches[0].clientX;
+    startW = sidebarEl.getBoundingClientRect().width;
+    resizerEl.classList.add('dragging');
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    applyWidth(startW + (e.touches[0].clientX - startX));
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    dragging = false; resizerEl.classList.remove('dragging');
+  });
+})();
+
+// ── 初始化 ────────────────────────────────────────────────────────────────────
 renderSidebar();
 selectCat('all');
 </script>
