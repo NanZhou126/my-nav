@@ -138,7 +138,7 @@
   .cat-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 9px 12px;
     border-radius: 10px;
     cursor: pointer;
@@ -164,6 +164,39 @@
     flex-shrink: 0;
   }
   .cat-item.active .cat-count { background: var(--primary); color: #fff; }
+
+  /* Tree expand toggle */
+  .cat-expand-btn {
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 0.6rem;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .cat-expand-btn:hover { background: rgba(0,0,0,0.06); color: var(--primary); }
+  .cat-expand-placeholder { width: 16px; flex-shrink: 0; }
+
+  /* Child categories */
+  .cat-children { overflow: hidden; transition: max-height 0.25s ease; }
+  .cat-child {
+    padding-left: 28px !important;
+    font-size: 0.85rem !important;
+  }
+  .cat-child .cat-icon { font-size: 0.85rem !important; }
+  .cat-child-line {
+    position: relative;
+  }
+  .cat-child-line::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
 
   .cat-admin-btns { display: none; gap: 4px; flex-shrink: 0; }
   body.admin-mode .cat-admin-btns { display: flex; }
@@ -278,6 +311,7 @@
     text-overflow: ellipsis;
     margin-bottom: 4px;
   }
+  .card-tags { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
   .card-cat-tag {
     font-size: 0.72rem;
     font-weight: 600;
@@ -286,6 +320,23 @@
     padding: 2px 8px;
     border-radius: 6px;
     display: inline-block;
+  }
+  .card-type-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .card-type-tag.url {
+    color: #0891b2;
+    background: #e0f7fa;
+  }
+  .card-type-tag.html {
+    color: #059669;
+    background: #d1fae5;
   }
   .card-desc {
     font-size: 0.82rem;
@@ -378,6 +429,37 @@
   }
   .form-group textarea { resize: vertical; min-height: 72px; }
 
+  /* Type selector pill */
+  .type-selector {
+    display: flex;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .type-selector-btn {
+    flex: 1;
+    padding: 9px 0;
+    border: none;
+    background: transparent;
+    font-size: 0.9rem;
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .type-selector-btn.active {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 700;
+  }
+  .type-selector-btn:not(.active):hover { background: var(--primary-light); color: var(--primary); }
+
   .emoji-picker-row {
     display: flex;
     flex-wrap: wrap;
@@ -440,6 +522,9 @@
 
   .admin-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
 
+  /* parent select option hint */
+  .parent-none-hint { color: var(--text-muted); font-style: italic; }
+
   aside::-webkit-scrollbar { width: 4px; }
   aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
@@ -485,12 +570,20 @@
 <div class="modal-overlay" id="toolModal">
   <div class="modal">
     <h3 id="toolModalTitle">➕ 添加工具</h3>
+    <!-- 类型选择 -->
     <div class="form-group">
-      <label>工具名称 *</label>
+      <label>类型 *</label>
+      <div class="type-selector">
+        <button class="type-selector-btn active" id="typeHtmlBtn" onclick="switchToolType('html')">⚙️ 功能</button>
+        <button class="type-selector-btn" id="typeUrlBtn" onclick="switchToolType('url')">🌐 网址</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>名称 *</label>
       <input type="text" id="toolName" placeholder="例：EXCEL合并工具">
     </div>
     <div class="form-group">
-      <label>工具链接 *</label>
+      <label>链接 *</label>
       <input type="text" id="toolUrl" placeholder="例：tools/EXCEL合并.html">
     </div>
     <div class="form-group">
@@ -519,10 +612,16 @@
 <!-- 分类弹窗 -->
 <div class="modal-overlay" id="catModal">
   <div class="modal">
-    <h3>📁 新增分类</h3>
+    <h3 id="catModalTitle">📁 新增分类</h3>
     <div class="form-group">
       <label>分类名称 *</label>
       <input type="text" id="catName" placeholder="例：数据处理">
+    </div>
+    <div class="form-group">
+      <label>上级分类（可选）</label>
+      <select id="catParent">
+        <option value="">— 顶级分类（无上级）—</option>
+      </select>
     </div>
     <div class="form-group">
       <label>分类图标</label>
@@ -542,7 +641,7 @@
     <div class="form-group">
       <label>管理员密码</label>
       <input type="password" id="adminPwdInput" placeholder="输入密码…" onkeydown="if(event.key==='Enter')verifyAdmin()">
-          </div>
+    </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('adminModal')">取消</button>
       <button class="btn-confirm" onclick="verifyAdmin()">确认进入</button>
@@ -552,19 +651,23 @@
 
 <script>
 // ==================== 可配置项 ====================
-// 密码已哈希存储，如需修改密码：在浏览器控制台执行 crypto.subtle.digest('SHA-256', new TextEncoder().encode('新密码')).then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''))) 获取新哈希值后替换下方字符串
+// 密码已哈希存储，如需修改密码：在浏览器控制台执行
+// crypto.subtle.digest('SHA-256', new TextEncoder().encode('新密码')).then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+// 获取新哈希值后替换下方字符串
 const ADMIN_PASSWORD_HASH = 'dbecea14bd9749898d6431f16d8191c1e8084379660ed4e293b18d36510ab610';
 
 // ==================== 默认数据 ====================
 const DEFAULT_DATA = {
   categories: [
-    { id: 'excel', name: 'Excel工具', icon: '📊' }
+    { id: 'excel', name: 'Excel工具', icon: '📊' },
+    { id: 'web', name: '常用网站', icon: '🌐' }
   ],
   tools: [
     {
       id: 't1',
       name: 'EXCEL合并工具',
       url: 'tools/EXCEL合并.html',
+      type: 'html',
       desc: '将多个Excel/CSV文件按列名映射智能合并，支持列名重命名、空行过滤和预览导出。',
       cat: 'excel',
       icon: '🔗',
@@ -574,6 +677,7 @@ const DEFAULT_DATA = {
       id: 't2',
       name: 'EXCEL笛卡尔积处理工具',
       url: 'tools/EXCEL笛卡尔积工具.html',
+      type: 'html',
       desc: '对Excel数据列进行笛卡尔积组合，快速生成所有可能的组合结果。',
       cat: 'excel',
       icon: '⚡',
@@ -586,11 +690,19 @@ const EMOJIS = ['📊','🔗','⚡','🛠️','📄','📋','🗂️','🔍','�
 const COLORS = ['#dbeafe','#ede9fe','#dcfce7','#fef9c3','#fce7f3','#ffedd5','#e0f2fe','#f1f5f9','#fef2f2','#ecfdf5','#fff7ed','#f0fdf4'];
 
 // ==================== 状态 ====================
-const STORAGE_KEY = 'nav_data_v1';
+const STORAGE_KEY = 'nav_data_v2';
 let data = (() => {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) return JSON.parse(s);
+    // 尝试迁移旧版数据
+    const old = localStorage.getItem('nav_data_v1');
+    if (old) {
+      const d = JSON.parse(old);
+      // 迁移旧工具，添加 type 字段
+      d.tools = (d.tools || []).map(t => ({ type: 'html', ...t }));
+      return d;
+    }
   } catch(e) {}
   return JSON.parse(JSON.stringify(DEFAULT_DATA));
 })();
@@ -601,32 +713,90 @@ let editingToolId = null;
 let selEmoji = EMOJIS[0];
 let selColor = COLORS[0];
 let selCatEmoji = '📁';
+let selToolType = 'html'; // 'html' | 'url'
+// 分类展开状态（id -> bool），默认展开
+let catExpanded = {};
 
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function genId() { return 'id' + Date.now() + Math.floor(Math.random()*999); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// ==================== 侧栏 ====================
+// ==================== 获取分类下所有工具（含子分类） ====================
+function getDescendantCatIds(catId) {
+  const ids = [catId];
+  data.categories.filter(c => c.parentId === catId).forEach(child => {
+    ids.push(...getDescendantCatIds(child.id));
+  });
+  return ids;
+}
+
+function getToolsByCat(catId) {
+  if (catId === 'all') return data.tools;
+  const ids = getDescendantCatIds(catId);
+  return data.tools.filter(t => ids.includes(t.cat));
+}
+
+// ==================== 侧栏（树状） ====================
 function renderSidebar() {
   const allCount = data.tools.length;
   let html = `<div class="cat-item ${currentCat==='all'?'active':''}" onclick="selectCat('all')">
+    <span class="cat-expand-placeholder"></span>
     <span class="cat-icon">🏠</span><span class="cat-name">全部工具</span>
     <span class="cat-count">${allCount}</span>
   </div>`;
 
-  data.categories.forEach(cat => {
-    const cnt = data.tools.filter(t => t.cat === cat.id).length;
-    html += `<div class="cat-item ${currentCat===cat.id?'active':''}" onclick="selectCat('${cat.id}')">
-      <span class="cat-icon">${cat.icon}</span>
-      <span class="cat-name">${esc(cat.name)}</span>
-      <span class="cat-count">${cnt}</span>
-      <div class="cat-admin-btns">
-        <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${cat.id}')" title="删除分类">🗑</button>
-      </div>
-    </div>`;
+  // 顶级分类
+  const rootCats = data.categories.filter(c => !c.parentId);
+  rootCats.forEach(cat => {
+    const children = data.categories.filter(c => c.parentId === cat.id);
+    const totalCount = getToolsByCat(cat.id).length;
+    const isExpanded = catExpanded[cat.id] !== false; // 默认展开
+
+    if (children.length > 0) {
+      html += `<div class="cat-item ${currentCat===cat.id?'active':''}" onclick="selectCat('${cat.id}')">
+        <span class="cat-expand-btn" onclick="event.stopPropagation();toggleCatExpand('${cat.id}')" title="${isExpanded?'收起':'展开'}">${isExpanded?'▼':'▶'}</span>
+        <span class="cat-icon">${cat.icon}</span>
+        <span class="cat-name">${esc(cat.name)}</span>
+        <span class="cat-count">${totalCount}</span>
+        <div class="cat-admin-btns">
+          <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${cat.id}')" title="删除分类">🗑</button>
+        </div>
+      </div>`;
+      if (isExpanded) {
+        html += `<div class="cat-child-line">`;
+        children.forEach(child => {
+          const cnt = getToolsByCat(child.id).length;
+          html += `<div class="cat-item cat-child ${currentCat===child.id?'active':''}" onclick="selectCat('${child.id}')">
+            <span class="cat-expand-placeholder"></span>
+            <span class="cat-icon">${child.icon}</span>
+            <span class="cat-name">${esc(child.name)}</span>
+            <span class="cat-count">${cnt}</span>
+            <div class="cat-admin-btns">
+              <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${child.id}')" title="删除分类">🗑</button>
+            </div>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+    } else {
+      html += `<div class="cat-item ${currentCat===cat.id?'active':''}" onclick="selectCat('${cat.id}')">
+        <span class="cat-expand-placeholder"></span>
+        <span class="cat-icon">${cat.icon}</span>
+        <span class="cat-name">${esc(cat.name)}</span>
+        <span class="cat-count">${totalCount}</span>
+        <div class="cat-admin-btns">
+          <button class="cat-admin-btn" onclick="event.stopPropagation();deleteCat('${cat.id}')" title="删除分类">🗑</button>
+        </div>
+      </div>`;
+    }
   });
 
   document.getElementById('catList').innerHTML = html;
+}
+
+function toggleCatExpand(catId) {
+  catExpanded[catId] = catExpanded[catId] === false ? true : false;
+  renderSidebar();
 }
 
 // ==================== 卡片 ====================
@@ -638,7 +808,12 @@ function renderCards(tools) {
   }
   grid.innerHTML = tools.map(t => {
     const catName = data.categories.find(c => c.id === t.cat)?.name || '';
-    return `<a class="tool-card" href="${esc(t.url)}" target="_blank">
+    const isUrl = t.type === 'url';
+    const typeTag = isUrl
+      ? `<span class="card-type-tag url">🌐 网址</span>`
+      : `<span class="card-type-tag html">⚙️ 功能</span>`;
+    const href = t.url;
+    return `<a class="tool-card" href="${esc(href)}" target="_blank" rel="noopener">
       <div class="card-admin-overlay">
         <button class="card-edit-btn" onclick="event.preventDefault();event.stopPropagation();openEditToolModal('${t.id}')" title="编辑">✏️</button>
         <button class="card-del-btn" onclick="event.preventDefault();event.stopPropagation();deleteTool('${t.id}')" title="删除">🗑</button>
@@ -647,7 +822,10 @@ function renderCards(tools) {
         <div class="card-icon" style="background:${t.color||'#f1f5f9'}">${t.icon||'🛠️'}</div>
         <div class="card-info">
           <div class="card-name">${esc(t.name)}</div>
-          ${catName ? `<span class="card-cat-tag">${esc(catName)}</span>` : ''}
+          <div class="card-tags">
+            ${typeTag}
+            ${catName ? `<span class="card-cat-tag">${esc(catName)}</span>` : ''}
+          </div>
         </div>
       </div>
       <div class="card-desc">${esc(t.desc||'')}</div>
@@ -661,14 +839,14 @@ function selectCat(catId) {
   document.getElementById('sectionIcon').textContent = catId === 'all' ? '🏠' : (cat?.icon || '📁');
   document.getElementById('sectionTitle').textContent = catId === 'all' ? '全部工具' : (cat?.name || '');
   document.getElementById('searchInput').value = '';
-  renderCards(catId === 'all' ? data.tools : data.tools.filter(t => t.cat === catId));
+  renderCards(getToolsByCat(catId));
   renderSidebar();
 }
 
 function handleSearch() {
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
   if (!q) { selectCat(currentCat); return; }
-  const base = currentCat === 'all' ? data.tools : data.tools.filter(t => t.cat === currentCat);
+  const base = getToolsByCat(currentCat);
   renderCards(base.filter(t => t.name.toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q)));
 }
 
@@ -705,6 +883,19 @@ async function verifyAdmin() {
     inp.value = '';
     inp.placeholder = '❌ 密码错误，请重试';
     setTimeout(() => { inp.style.borderColor = ''; inp.placeholder = '输入密码…'; }, 1800);
+  }
+}
+
+// ==================== 工具类型切换 ====================
+function switchToolType(type) {
+  selToolType = type;
+  document.getElementById('typeHtmlBtn').classList.toggle('active', type === 'html');
+  document.getElementById('typeUrlBtn').classList.toggle('active', type === 'url');
+  const urlInput = document.getElementById('toolUrl');
+  if (type === 'url') {
+    urlInput.placeholder = '例：https://yhtools.top/';
+  } else {
+    urlInput.placeholder = '例：tools/EXCEL合并.html';
   }
 }
 
@@ -747,11 +938,12 @@ function fillCatSelect(selectedId) {
 
 function openAddToolModal() {
   editingToolId = null;
-  selEmoji = EMOJIS[0]; selColor = COLORS[0];
+  selEmoji = EMOJIS[0]; selColor = COLORS[0]; selToolType = 'html';
   document.getElementById('toolModalTitle').textContent = '➕ 添加工具';
   document.getElementById('toolName').value = '';
   document.getElementById('toolUrl').value = '';
   document.getElementById('toolDesc').value = '';
+  switchToolType('html');
   fillCatSelect(currentCat !== 'all' ? currentCat : data.categories[0]?.id);
   buildEmojiPicker('emojiPicker', selEmoji, 'pickEmoji');
   buildColorPicker(selColor);
@@ -764,10 +956,12 @@ function openEditToolModal(id) {
   editingToolId = id;
   selEmoji = t.icon || EMOJIS[0];
   selColor = t.color || COLORS[0];
+  selToolType = t.type || 'html';
   document.getElementById('toolModalTitle').textContent = '✏️ 编辑工具';
   document.getElementById('toolName').value = t.name;
   document.getElementById('toolUrl').value = t.url;
   document.getElementById('toolDesc').value = t.desc || '';
+  switchToolType(selToolType);
   fillCatSelect(t.cat);
   buildEmojiPicker('emojiPicker', selEmoji, 'pickEmoji');
   buildColorPicker(selColor);
@@ -779,14 +973,17 @@ function saveToolModal() {
   const url = document.getElementById('toolUrl').value.trim();
   const desc = document.getElementById('toolDesc').value.trim();
   const cat = document.getElementById('toolCat').value;
-  if (!name) { alert('请填写工具名称'); return; }
-  if (!url) { alert('请填写工具链接'); return; }
+  if (!name) { alert('请填写名称'); return; }
+  if (!url) { alert('请填写链接'); return; }
+  if (selToolType === 'url' && !/^https?:\/\//i.test(url)) {
+    alert('网址类型的链接需以 http:// 或 https:// 开头'); return;
+  }
 
   if (editingToolId) {
     const t = data.tools.find(x => x.id === editingToolId);
-    if (t) Object.assign(t, { name, url, desc, cat, icon: selEmoji, color: selColor });
+    if (t) Object.assign(t, { name, url, desc, cat, type: selToolType, icon: selEmoji, color: selColor });
   } else {
-    data.tools.push({ id: genId(), name, url, desc, cat, icon: selEmoji, color: selColor });
+    data.tools.push({ id: genId(), name, url, desc, cat, type: selToolType, icon: selEmoji, color: selColor });
   }
   save();
   closeModal('toolModal');
@@ -804,25 +1001,52 @@ function deleteTool(id) {
 function openAddCatModal() {
   selCatEmoji = '📁';
   document.getElementById('catName').value = '';
+  document.getElementById('catModalTitle').textContent = '📁 新增分类';
+
+  // 填充上级分类选项（只允许顶级分类作为父级，防止多层嵌套过深）
+  const rootCats = data.categories.filter(c => !c.parentId);
+  document.getElementById('catParent').innerHTML =
+    `<option value="">— 顶级分类（无上级）—</option>` +
+    rootCats.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+
   buildEmojiPicker('catEmojiPicker', selCatEmoji, 'pickCatEmoji');
   openModal('catModal');
 }
 
 function saveCatModal() {
   const name = document.getElementById('catName').value.trim();
+  const parentId = document.getElementById('catParent').value || null;
   if (!name) { alert('请填写分类名称'); return; }
-  data.categories.push({ id: genId(), name, icon: selCatEmoji });
+
+  const newCat = { id: genId(), name, icon: selCatEmoji };
+  if (parentId) newCat.parentId = parentId;
+  data.categories.push(newCat);
   save();
   closeModal('catModal');
   renderSidebar();
 }
 
 function deleteCat(id) {
-  const cnt = data.tools.filter(t => t.cat === id).length;
-  const msg = cnt > 0 ? `该分类下有 ${cnt} 个工具（工具本身不会删除，仅移出分类）。确定删除分类？` : '确定删除此分类？';
+  // 同时检查子分类
+  const childIds = data.categories.filter(c => c.parentId === id).map(c => c.id);
+  const allIds = [id, ...childIds];
+  const cnt = data.tools.filter(t => allIds.includes(t.cat)).length;
+  const hasChildren = childIds.length > 0;
+
+  let msg = '';
+  if (hasChildren && cnt > 0) {
+    msg = `该分类包含 ${childIds.length} 个子分类，共 ${cnt} 个工具（工具本身不会删除）。确定删除该分类及其所有子分类？`;
+  } else if (hasChildren) {
+    msg = `该分类包含 ${childIds.length} 个子分类，确定删除该分类及其所有子分类？`;
+  } else if (cnt > 0) {
+    msg = `该分类下有 ${cnt} 个工具（工具本身不会删除，仅移出分类）。确定删除分类？`;
+  } else {
+    msg = '确定删除此分类？';
+  }
+
   if (!confirm(msg)) return;
-  data.categories = data.categories.filter(c => c.id !== id);
-  if (currentCat === id) currentCat = 'all';
+  data.categories = data.categories.filter(c => !allIds.includes(c.id));
+  if (allIds.includes(currentCat)) currentCat = 'all';
   save();
   renderSidebar();
   selectCat(currentCat);
