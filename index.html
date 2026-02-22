@@ -552,7 +552,8 @@
 
 <script>
 // ==================== 可配置项 ====================
-const ADMIN_PASSWORD = 'zz126126'; // 修改此处更改密码
+// 密码已哈希存储，如需修改密码：在浏览器控制台执行 crypto.subtle.digest('SHA-256', new TextEncoder().encode('新密码')).then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''))) 获取新哈希值后替换下方字符串
+const ADMIN_PASSWORD_HASH = 'dbecea14bd9749898d6431f16d8191c1e8084379660ed4e293b18d36510ab610';
 
 // ==================== 默认数据 ====================
 const DEFAULT_DATA = {
@@ -686,9 +687,12 @@ function toggleAdminMode() {
   }
 }
 
-function verifyAdmin() {
+async function verifyAdmin() {
   const pwd = document.getElementById('adminPwdInput').value;
-  if (pwd === ADMIN_PASSWORD) {
+  const encoded = new TextEncoder().encode(pwd);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+  const hashHex = [...new Uint8Array(hashBuffer)].map(x => x.toString(16).padStart(2, '0')).join('');
+  if (hashHex === ADMIN_PASSWORD_HASH) {
     isAdmin = true;
     document.body.classList.add('admin-mode');
     const btn = document.getElementById('adminToggleBtn');
