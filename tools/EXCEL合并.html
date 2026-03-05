@@ -627,6 +627,45 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* ===== 拆分列为行面板 ===== */
+        .split-panel {
+            background: #f0e6ff;
+            border: 3px solid #9b5de5;
+            border-radius: 24px;
+            padding: 18px 22px;
+            margin-bottom: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            box-shadow: 0 6px 0 #9b5de5;
+        }
+        .split-panel label { font-weight: 700; color: #3b2e6b; font-size: 1rem; white-space: nowrap; }
+        .split-col-select {
+            padding: 10px 16px;
+            border: 3px solid #9b5de5;
+            border-radius: 40px;
+            background: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            min-width: 160px;
+        }
+        .split-delimiter-input {
+            padding: 10px 16px;
+            border: 3px solid #00bbf9;
+            border-radius: 40px;
+            background: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            width: 100px;
+            text-align: center;
+        }
+        .split-hint {
+            font-size: 0.85rem;
+            color: #9b5de5;
+            font-weight: 600;
+        }
         .preview-table td.cell-truncated {
             cursor: help;
             position: relative;
@@ -1191,6 +1230,16 @@
                 </select>
                 <button class="btn btn-danger" onclick="applyDedup()" style="padding:10px 22px;font-size:0.95rem;">🧹 执行去重</button>
                 <span style="font-size:0.85rem;color:#888;font-weight:600;">按住 Ctrl/Cmd 多选列</span>
+            </div>
+
+            <!-- 拆分列为行面板 -->
+            <div class="split-panel">
+                <label>✂️ 拆分列为行：</label>
+                <select class="split-col-select" id="splitColSelect"></select>
+                <label>分隔符</label>
+                <input type="text" class="split-delimiter-input" id="splitDelimiter" value="/" placeholder="如 / , ;">
+                <button class="btn btn-warning" onclick="applySplitColumnToRows()" style="padding:10px 22px;font-size:0.95rem;">✂️ 执行拆分</button>
+                <span class="split-hint">将所选列按分隔符拆成多行，其他列复制</span>
             </div>
 
             <div class="regex-panel" id="regexPanel">
@@ -2193,6 +2242,7 @@ function mergeFiles() {
     previewSection.scrollIntoView({ behavior: 'smooth' });
     updateRegexColumnSelect();
     updateDedupColSelect();
+    updateSplitColSelect();
     updateUndoRedoUI();
 }
 
@@ -2844,6 +2894,7 @@ function undoAction() {
     currentPage = 1;
     updateRegexColumnSelect();
     updateDedupColSelect();
+    updateSplitColSelect();
     renderPreview();
     updateUndoRedoUI();
     showToast(`↩ 已撤销: ${snap.desc}`);
@@ -2859,6 +2910,7 @@ function redoAction() {
     currentPage = 1;
     updateRegexColumnSelect();
     updateDedupColSelect();
+    updateSplitColSelect();
     renderPreview();
     updateUndoRedoUI();
     showToast('↪ 已重做');
@@ -2961,6 +3013,46 @@ function applyDedup() {
     currentPage = 1;
     renderPreview();
     showToast(`🧹 去重完成，删除 ${removed} 条重复行，剩余 ${mergedData.length} 条`);
+}
+
+// ==================== 拆分列为行 ====================
+function updateSplitColSelect() {
+    const sel = document.getElementById('splitColSelect');
+    if (!sel) return;
+    sel.innerHTML = previewCols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+}
+
+function applySplitColumnToRows() {
+    const sel = document.getElementById('splitColSelect');
+    const colName = sel?.value;
+    const delimiter = document.getElementById('splitDelimiter')?.value ?? '';
+    if (!colName) { showToast('⚠️ 请先选择要拆分的列'); return; }
+    if (!delimiter) { showToast('⚠️ 请输入分隔符'); return; }
+
+    const before = mergedData.length;
+    saveSnapshot(`拆分列"${colName}"(分隔符: ${delimiter})`);
+
+    const newData = [];
+    mergedData.forEach(row => {
+        const cellValue = row[colName] !== undefined ? String(row[colName]) : '';
+        if (cellValue === '') {
+            newData.push({ ...row });
+            return;
+        }
+        const parts = cellValue.split(delimiter).filter(p => p !== '');
+        if (parts.length <= 1) {
+            newData.push({ ...row });
+        } else {
+            parts.forEach(part => {
+                newData.push({ ...row, [colName]: part.trim() });
+            });
+        }
+    });
+
+    mergedData = newData;
+    currentPage = 1;
+    renderPreview();
+    showToast(`✂️ 拆分完成，${before} 行 → ${mergedData.length} 行`);
 }
 
 // ==================== 数据统计面板 ====================
