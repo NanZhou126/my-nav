@@ -67,7 +67,7 @@
     transform: translateY(-50%);
     color: var(--text-muted); font-size: 0.95rem; pointer-events: none;
   }
-  .header-right { margin-left: auto; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .admin-toggle-btn {
     padding: 7px 16px; border-radius: 20px;
     border: 1.5px solid var(--border);
@@ -403,7 +403,7 @@
   </div>
   <div class="header-right">
     <button class="admin-toggle-btn" id="adminToggleBtn" onclick="toggleAdminMode()">⚙️ 管理</button>
-    <button class="admin-toggle-btn" id="ghConfigBtn" onclick="openGhConfigModal()" title="GitHub 数据库配置" style="margin-left:8px">🔗 GitHub</button>
+    <button class="admin-toggle-btn" id="ghConfigBtn" onclick="openGhConfigModal()" title="GitHub 数据库配置（未配置）" style="margin-left:8px">🔗 GitHub</button>
   </div>
 </header>
 
@@ -513,6 +513,51 @@
   </div>
 </div>
 
+<!-- GitHub 配置弹窗 -->
+<div class="modal-overlay" id="ghConfigModal">
+  <div class="modal" style="max-width:520px">
+    <h3>🔗 GitHub 数据库配置</h3>
+    <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:18px;line-height:1.6">
+      配置后，所有添加/修改操作将同步写入你的 GitHub 仓库 JSON 文件，<br>任意浏览器、任意设备打开网页都能看到最新数据。
+    </p>
+    <div class="form-group">
+      <label>GitHub 用户名 *</label>
+      <input type="text" id="ghOwner" placeholder="例：your-username">
+    </div>
+    <div class="form-group">
+      <label>仓库名称 *</label>
+      <input type="text" id="ghRepo" placeholder="例：my-nav-site">
+    </div>
+    <div class="form-group">
+      <label>分支</label>
+      <input type="text" id="ghBranch" placeholder="main">
+    </div>
+    <div class="form-group">
+      <label>数据文件路径</label>
+      <input type="text" id="ghPath" placeholder="data/nav_data.json">
+    </div>
+    <div class="form-group">
+      <label>Personal Access Token (PAT) *
+        <a href="https://github.com/settings/tokens/new?scopes=repo&description=nav-site" target="_blank"
+           style="color:var(--primary);font-weight:600;margin-left:6px;font-size:0.8rem">→ 点此生成 Token</a>
+      </label>
+      <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:5px">
+        ⚠️ Token 仅存储在<strong>本机浏览器</strong>，不会上传到任何服务器。建议只勾选 <code>repo</code> 权限。
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button class="btn-cancel" style="flex:1" onclick="testGhConnection()">🧪 测试连接</button>
+      <button class="btn-cancel" style="flex:1;color:#ef4444" onclick="clearGhConfig()">🗑 清除配置</button>
+    </div>
+    <div id="ghTestResult" style="display:none;padding:10px 14px;border-radius:10px;font-size:0.85rem;font-weight:600;margin-bottom:14px"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('ghConfigModal')">取消</button>
+      <button class="btn-confirm" onclick="saveGhConfig()">保存配置并立即同步</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── 配置 ──────────────────────────────────────────────────────────────────────
 // 修改密码：浏览器控制台执行
@@ -534,20 +579,27 @@ const DEFAULT_DATA = {
 const EMOJIS = ['📊','🔗','⚡','🛠️','📄','📋','🗂️','🔍','📈','📉','💡','🧮','🧰','📦','🔧','✂️','🖨️','💾','📥','📤','🎯','🔄','⚙️','🧩','🌐','📌','🗃️','📝','🖥️','📱','🔐'];
 const COLORS  = ['#dbeafe','#ede9fe','#dcfce7','#fef9c3','#fce7f3','#ffedd5','#e0f2fe','#f1f5f9','#fef2f2','#ecfdf5','#fff7ed','#f0fdf4'];
 
-// ── 状态 ──────────────────────────────────────────────────────────────────────
-const STORAGE_KEY    = 'nav_data_v3';
-const GH_CONFIG_KEY  = 'nav_gh_config';
+// ── 状态 & GitHub 配置 ────────────────────────────────────────────────────────
+const STORAGE_KEY   = 'nav_data_v3';
+const GH_CONFIG_KEY = 'nav_gh_config';
 
-// ── GitHub 配置（运行时从 localStorage 读取，管理员可在设置弹窗中填写） ────────
 let ghConfig = (() => {
   try { return JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || 'null') || {}; } catch(e) { return {}; }
 })();
-// ghConfig = { owner, repo, branch, path, token }
+let _ghFileSha = null;
 
-let _ghFileSha = null;   // 最新文件的 SHA，PUT 时必须提供
-
-// ── 数据初始化（优先远端，降级本地，再降级默认） ──────────────────────────────
-let data = JSON.parse(JSON.stringify(DEFAULT_DATA)); // 先用默认，异步覆盖
+// 先用本地/默认数据初始化，页面不白屏
+let data = (() => {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) return JSON.parse(s);
+    for (const k of ['nav_data_v2','nav_data_v1']) {
+      const old = localStorage.getItem(k);
+      if (old) { const d = JSON.parse(old); d.tools = (d.tools||[]).map(t=>({type:'html',...t})); return d; }
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+})();
 
 let currentCat    = 'all';
 let isAdmin       = false;
@@ -564,14 +616,16 @@ function ghHeaders(token) {
   return {
     'Accept': 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    ...(token ? { 'Authorization': 'Bearer ' + token } : {})
   };
 }
 
 function ghApiUrl() {
-  const { owner, repo, path = 'data/nav_data.json', branch = 'main' } = ghConfig;
+  const owner = ghConfig.owner, repo = ghConfig.repo;
+  const path = ghConfig.path || 'data/nav_data.json';
+  const branch = ghConfig.branch || 'main';
   if (!owner || !repo) return null;
-  return `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  return 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path + '?ref=' + branch;
 }
 
 async function ghLoad() {
@@ -582,7 +636,7 @@ async function ghLoad() {
     const res = await fetch(url, { headers: ghHeaders(ghConfig.token) });
     if (!res.ok) {
       if (res.status === 404) { showSyncStatus('warn', '远端文件不存在，将在首次保存时自动创建'); return null; }
-      throw new Error(`HTTP ${res.status}`);
+      throw new Error('HTTP ' + res.status);
     }
     const json = await res.json();
     _ghFileSha = json.sha;
@@ -590,15 +644,17 @@ async function ghLoad() {
     showSyncStatus('ok', '已同步 GitHub 数据 ✓');
     return decoded;
   } catch(e) {
-    showSyncStatus('warn', `读取 GitHub 失败：${e.message}`);
+    showSyncStatus('warn', '读取 GitHub 失败：' + e.message);
     return null;
   }
 }
 
 async function ghSave(dataObj) {
-  const { owner, repo, path = 'data/nav_data.json', branch = 'main', token } = ghConfig;
+  const owner = ghConfig.owner, repo = ghConfig.repo, token = ghConfig.token;
+  const path = ghConfig.path || 'data/nav_data.json';
+  const branch = ghConfig.branch || 'main';
   if (!owner || !repo || !token) return false;
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const url = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path;
   try {
     showSyncStatus('loading', '正在保存到 GitHub…');
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(dataObj, null, 2))));
@@ -606,61 +662,132 @@ async function ghSave(dataObj) {
     if (_ghFileSha) body.sha = _ghFileSha;
     const res = await fetch(url, {
       method: 'PUT',
-      headers: { ...ghHeaders(token), 'Content-Type': 'application/json' },
+      headers: Object.assign({}, ghHeaders(token), { 'Content-Type': 'application/json' }),
       body: JSON.stringify(body)
     });
-    if (!res.ok) { const err = await res.json(); throw new Error(err.message || `HTTP ${res.status}`); }
+    if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'HTTP ' + res.status); }
     const json = await res.json();
-    _ghFileSha = json.content?.sha;
+    _ghFileSha = json.content && json.content.sha;
     showSyncStatus('ok', '已保存到 GitHub ✓');
     return true;
   } catch(e) {
-    showSyncStatus('error', `保存 GitHub 失败：${e.message}`);
+    showSyncStatus('error', '保存 GitHub 失败：' + e.message);
     return false;
   }
 }
 
-// ── 同步状态指示器 ────────────────────────────────────────────────────────────
+// ── 同步状态提示条 ────────────────────────────────────────────────────────────
 let _syncTimer = null;
 function showSyncStatus(type, msg) {
   let el = document.getElementById('syncStatus');
   if (!el) {
     el = document.createElement('div');
     el.id = 'syncStatus';
-    el.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:9999;
-      padding:10px 18px;border-radius:30px;font-size:0.85rem;font-weight:600;
-      box-shadow:0 4px 20px rgba(0,0,0,0.15);transition:all 0.3s;
-      display:flex;align-items:center;gap:8px;font-family:inherit;`;
+    el.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 18px;border-radius:30px;font-size:0.85rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.15);transition:opacity 0.3s;display:flex;align-items:center;gap:8px;font-family:inherit;';
     document.body.appendChild(el);
   }
-  const styles = {
-    loading: { bg: '#e0f2fe', color: '#0369a1', icon: '⏳' },
-    ok:      { bg: '#dcfce7', color: '#15803d', icon: '✅' },
-    warn:    { bg: '#fef9c3', color: '#a16207', icon: '⚠️' },
-    error:   { bg: '#fee2e2', color: '#dc2626', icon: '❌' }
-  };
+  const styles = { loading:{bg:'#e0f2fe',color:'#0369a1',icon:'⏳'}, ok:{bg:'#dcfce7',color:'#15803d',icon:'✅'}, warn:{bg:'#fef9c3',color:'#a16207',icon:'⚠️'}, error:{bg:'#fee2e2',color:'#dc2626',icon:'❌'} };
   const s = styles[type] || styles.ok;
-  el.style.background = s.bg;
-  el.style.color = s.color;
-  el.textContent = `${s.icon} ${msg}`;
+  el.style.background = s.bg; el.style.color = s.color;
+  el.textContent = s.icon + ' ' + msg;
   el.style.opacity = '1';
   clearTimeout(_syncTimer);
-  if (type === 'ok') {
-    _syncTimer = setTimeout(() => { el.style.opacity = '0'; }, 3000);
-  }
+  if (type === 'ok') { _syncTimer = setTimeout(function(){ el.style.opacity = '0'; }, 3000); }
 }
 
 // ── save / genId ──────────────────────────────────────────────────────────────
 function save() {
-  // 本地始终保存一份作为离线缓存
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
-  // 如果已配置 GitHub，异步同步
-  if (ghConfig.owner && ghConfig.repo && ghConfig.token) {
-    ghSave(data);
+  if (ghConfig.owner && ghConfig.repo && ghConfig.token) { ghSave(data); }
+}
+function genId() { return 'id' + Date.now() + Math.floor(Math.random()*999); }
+
+// ── GitHub 配置弹窗逻辑 ───────────────────────────────────────────────────────
+function openGhConfigModal() {
+  document.getElementById('ghOwner').value  = ghConfig.owner  || '';
+  document.getElementById('ghRepo').value   = ghConfig.repo   || '';
+  document.getElementById('ghBranch').value = ghConfig.branch || 'main';
+  document.getElementById('ghPath').value   = ghConfig.path   || 'data/nav_data.json';
+  document.getElementById('ghToken').value  = ghConfig.token  || '';
+  document.getElementById('ghTestResult').style.display = 'none';
+  openModal('ghConfigModal');
+}
+
+function saveGhConfig() {
+  const owner  = document.getElementById('ghOwner').value.trim();
+  const repo   = document.getElementById('ghRepo').value.trim();
+  const branch = document.getElementById('ghBranch').value.trim() || 'main';
+  const path   = document.getElementById('ghPath').value.trim()   || 'data/nav_data.json';
+  const token  = document.getElementById('ghToken').value.trim();
+  if (!owner || !repo || !token) { alert('用户名、仓库名、Token 均为必填'); return; }
+  ghConfig = { owner, repo, branch, path, token };
+  localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(ghConfig));
+  updateGhBtn();
+  closeModal('ghConfigModal');
+  ghLoad().then(function(remote) {
+    if (remote) {
+      data = remote;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      renderSidebar(); selectCat(currentCat);
+    } else {
+      ghSave(data);
+    }
+  });
+}
+
+async function testGhConnection() {
+  const owner  = document.getElementById('ghOwner').value.trim();
+  const repo   = document.getElementById('ghRepo').value.trim();
+  const branch = document.getElementById('ghBranch').value.trim() || 'main';
+  const path   = document.getElementById('ghPath').value.trim()   || 'data/nav_data.json';
+  const token  = document.getElementById('ghToken').value.trim();
+  const resEl  = document.getElementById('ghTestResult');
+  resEl.style.display = 'block';
+  resEl.style.background = '#e0f2fe'; resEl.style.color = '#0369a1';
+  resEl.textContent = '⏳ 正在测试…';
+  try {
+    const url = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path + '?ref=' + branch;
+    const res = await fetch(url, { headers: ghHeaders(token) });
+    if (res.ok) {
+      const json = await res.json();
+      resEl.style.background = '#dcfce7'; resEl.style.color = '#15803d';
+      resEl.textContent = '✅ 连接成功！文件存在，SHA: ' + (json.sha||'').slice(0,8) + '…';
+    } else if (res.status === 404) {
+      resEl.style.background = '#fef9c3'; resEl.style.color = '#a16207';
+      resEl.textContent = '⚠️ 仓库/Token 有效，文件不存在（首次保存时自动创建）';
+    } else if (res.status === 401) {
+      resEl.style.background = '#fee2e2'; resEl.style.color = '#dc2626';
+      resEl.textContent = '❌ Token 无效或权限不足';
+    } else {
+      resEl.style.background = '#fee2e2'; resEl.style.color = '#dc2626';
+      resEl.textContent = '❌ HTTP ' + res.status + '，请检查用户名/仓库名';
+    }
+  } catch(e) {
+    resEl.style.background = '#fee2e2'; resEl.style.color = '#dc2626';
+    resEl.textContent = '❌ 网络错误：' + e.message;
   }
 }
 
-function genId() { return 'id' + Date.now() + Math.floor(Math.random()*999); }
+function clearGhConfig() {
+  if (!confirm('确定清除 GitHub 配置？清除后将只使用本地浏览器存储。')) return;
+  ghConfig = {}; _ghFileSha = null;
+  localStorage.removeItem(GH_CONFIG_KEY);
+  updateGhBtn();
+  closeModal('ghConfigModal');
+  showSyncStatus('warn', '已清除 GitHub 配置，改为本地存储模式');
+}
+
+function updateGhBtn() {
+  const btn = document.getElementById('ghConfigBtn');
+  if (!btn) return;
+  if (ghConfig.owner && ghConfig.repo) {
+    btn.style.borderColor = '#22c55e'; btn.style.color = '#16a34a';
+    btn.title = '已连接：' + ghConfig.owner + '/' + ghConfig.repo;
+  } else {
+    btn.style.borderColor = ''; btn.style.color = '';
+    btn.title = 'GitHub 数据库配置（未配置）';
+  }
+}
 function esc(s)  {
   return String(s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -1107,163 +1234,17 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   });
 })();
 
-<!-- GitHub 配置弹窗 -->
-<div class="modal-overlay" id="ghConfigModal">
-  <div class="modal" style="max-width:520px">
-    <h3>🔗 GitHub 数据库配置</h3>
-    <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:18px;line-height:1.6">
-      配置后，所有添加/修改操作将同步写入你的 GitHub 仓库 JSON 文件，<br>
-      任意浏览器、任意设备打开网页都能看到最新数据。
-    </p>
-    <div class="form-group">
-      <label>GitHub 用户名 *</label>
-      <input type="text" id="ghOwner" placeholder="例：your-username">
-    </div>
-    <div class="form-group">
-      <label>仓库名称 *</label>
-      <input type="text" id="ghRepo" placeholder="例：my-nav-site">
-    </div>
-    <div class="form-group">
-      <label>分支</label>
-      <input type="text" id="ghBranch" placeholder="main">
-    </div>
-    <div class="form-group">
-      <label>数据文件路径</label>
-      <input type="text" id="ghPath" placeholder="data/nav_data.json">
-    </div>
-    <div class="form-group">
-      <label>Personal Access Token (PAT) *
-        <a href="https://github.com/settings/tokens/new?scopes=repo&description=nav-site" target="_blank"
-           style="color:var(--primary);font-weight:600;margin-left:6px;font-size:0.8rem">→ 点此生成 Token</a>
-      </label>
-      <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:5px">
-        ⚠️ Token 仅存储在<strong>本机浏览器</strong>，不会上传到任何服务器。建议只勾选 <code>repo</code> 权限。
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;margin-bottom:16px">
-      <button class="btn-cancel" style="flex:1" onclick="testGhConnection()">🧪 测试连接</button>
-      <button class="btn-cancel" style="flex:1;color:#ef4444" onclick="clearGhConfig()">🗑 清除配置</button>
-    </div>
-    <div id="ghTestResult" style="display:none;padding:10px 14px;border-radius:10px;font-size:0.85rem;font-weight:600;margin-bottom:14px"></div>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeModal('ghConfigModal')">取消</button>
-      <button class="btn-confirm" onclick="saveGhConfig()">保存配置并立即同步</button>
-    </div>
-  </div>
-</div>
+// ── 初始化（先本地渲染，再异步拉取 GitHub 最新数据） ─────────────────────────
+renderSidebar();
+selectCat('all');
+updateGhBtn();
 
-<script>
-// ── GitHub 配置弹窗逻辑 ────────────────────────────────────────────────────────
-function openGhConfigModal() {
-  document.getElementById('ghOwner').value  = ghConfig.owner  || '';
-  document.getElementById('ghRepo').value   = ghConfig.repo   || '';
-  document.getElementById('ghBranch').value = ghConfig.branch || 'main';
-  document.getElementById('ghPath').value   = ghConfig.path   || 'data/nav_data.json';
-  document.getElementById('ghToken').value  = ghConfig.token  || '';
-  document.getElementById('ghTestResult').style.display = 'none';
-  openModal('ghConfigModal');
-}
-
-function saveGhConfig() {
-  const owner  = document.getElementById('ghOwner').value.trim();
-  const repo   = document.getElementById('ghRepo').value.trim();
-  const branch = document.getElementById('ghBranch').value.trim() || 'main';
-  const path   = document.getElementById('ghPath').value.trim()   || 'data/nav_data.json';
-  const token  = document.getElementById('ghToken').value.trim();
-  if (!owner || !repo || !token) { alert('用户名、仓库名、Token 均为必填'); return; }
-  ghConfig = { owner, repo, branch, path, token };
-  localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(ghConfig));
-  updateGhBtn();
-  closeModal('ghConfigModal');
-  // 立即从远端拉取数据
-  ghLoad().then(remote => {
-    if (remote) {
-      data = remote;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      renderSidebar(); selectCat(currentCat);
-    } else {
-      // 远端不存在，把当前本地数据推上去
-      ghSave(data);
-    }
-  });
-}
-
-async function testGhConnection() {
-  const owner  = document.getElementById('ghOwner').value.trim();
-  const repo   = document.getElementById('ghRepo').value.trim();
-  const branch = document.getElementById('ghBranch').value.trim() || 'main';
-  const path   = document.getElementById('ghPath').value.trim()   || 'data/nav_data.json';
-  const token  = document.getElementById('ghToken').value.trim();
-  const resEl  = document.getElementById('ghTestResult');
-  resEl.style.display = 'block';
-  resEl.style.background = '#e0f2fe'; resEl.style.color = '#0369a1';
-  resEl.textContent = '⏳ 正在测试…';
-  try {
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
-    const res = await fetch(url, { headers: ghHeaders(token) });
-    if (res.ok) {
-      const json = await res.json();
-      resEl.style.background = '#dcfce7'; resEl.style.color = '#15803d';
-      resEl.textContent = `✅ 连接成功！文件存在，SHA: ${json.sha?.slice(0,8)}…`;
-    } else if (res.status === 404) {
-      resEl.style.background = '#fef9c3'; resEl.style.color = '#a16207';
-      resEl.textContent = '⚠️ 仓库/Token 有效，但文件不存在（首次保存时会自动创建）';
-    } else if (res.status === 401) {
-      resEl.style.background = '#fee2e2'; resEl.style.color = '#dc2626';
-      resEl.textContent = '❌ Token 无效或权限不足，请检查 Token 的 repo 权限';
-    } else {
-      resEl.style.background = '#fee2e2'; resEl.style.color = '#dc2626';
-      resEl.textContent = `❌ HTTP ${res.status}，请检查用户名/仓库名是否正确`;
-    }
-  } catch(e) {
-    resEl.style.background = '#fee2e2'; resEl.style.color = '#dc2626';
-    resEl.textContent = `❌ 网络错误：${e.message}`;
-  }
-}
-
-function clearGhConfig() {
-  if (!confirm('确定清除 GitHub 配置？清除后将只使用本地浏览器存储。')) return;
-  ghConfig = {};
-  _ghFileSha = null;
-  localStorage.removeItem(GH_CONFIG_KEY);
-  updateGhBtn();
-  closeModal('ghConfigModal');
-  showSyncStatus('warn', '已清除 GitHub 配置，改为本地存储模式');
-}
-
-function updateGhBtn() {
-  const btn = document.getElementById('ghConfigBtn');
-  if (ghConfig.owner && ghConfig.repo) {
-    btn.style.borderColor = '#22c55e';
-    btn.style.color = '#16a34a';
-    btn.title = `已连接：${ghConfig.owner}/${ghConfig.repo}`;
-  } else {
-    btn.style.borderColor = '';
-    btn.style.color = '';
-    btn.title = 'GitHub 数据库配置（未配置）';
-  }
-}
-
-// ── 页面初始化：优先从 GitHub 加载 ────────────────────────────────────────────
-(async function init() {
-  // 先用本地缓存渲染，保证页面不白屏
-  try {
-    const local = localStorage.getItem(STORAGE_KEY);
-    if (local) {
-      data = JSON.parse(local);
-    }
-  } catch(e) {}
-  renderSidebar();
-  selectCat('all');
-  updateGhBtn();
-
-  // 再异步从 GitHub 拉取最新数据
+(async function() {
   if (ghConfig.owner && ghConfig.repo) {
     const remote = await ghLoad();
     if (remote) {
       data = remote;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
       renderSidebar();
       selectCat(currentCat);
     }
@@ -1271,8 +1252,6 @@ function updateGhBtn() {
     showSyncStatus('warn', '💡 未配置 GitHub，当前使用本地浏览器存储（换浏览器数据不同步）');
   }
 })();
-</script>
-
 </script>
 </body>
 </html>
