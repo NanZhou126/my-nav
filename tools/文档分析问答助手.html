@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文档问答机器人</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f2eb;
+    --surface: #fffef9;
+    --surface2: #f0ede4;
+    --border: #d8d3c5;
+    --border2: #c2bdb0;
+    --text: #1a1815;
+    --text2: #6b6560;
+    --text3: #9e9890;
+    --accent: #2d4a3e;
+    --accent-light: #e8f0ed;
+    --accent2: #8b5e3c;
+    --user-bg: #2d4a3e;
+    --user-text: #f0f7f4;
+    --ai-bg: #fffef9;
+    --tag: #f7f3ec;
+  }
+
+  body {
+    font-family: 'Noto Serif SC', serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 1.8; }
+
+  .logo-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .doc-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text3);
+    background: var(--tag);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 10px;
+  }
+
+  .doc-status.loaded { color: var(--accent); border-color: var(--accent-light); background: var(--accent-light); }
+
+  /* Main layout */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Left panel - document */
+  .doc-panel {
+    width: 380px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .doc-textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 16px 20px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+    background: var(--surface);
+    overflow-y: auto;
+  }
+
+  .doc-textarea::placeholder { color: var(--text3); }
+
+  .doc-actions {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn-load {
+    flex: 1;
+    padding: 8px 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-load:hover { opacity: 0.88; }
+
+  .btn-clear {
+    padding: 8px 12px;
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-clear:hover { background: var(--surface2); }
+
+  .char-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  /* Right panel - chat */
+  .chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Welcome */
+  .welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    opacity: 0.5;
+  }
+
+  .welcome-icon { font-size: 36px; }
+  .welcome-text { font-size: 15px; color: var(--text2); text-align: center; line-height: 1.7; }
+
+  /* Messages */
+  .message { display: flex; flex-direction: column; gap: 4px; max-width: 85%; }
+  .message.user { align-self: flex-end; align-items: flex-end; }
+  .message.ai { align-self: flex-start; align-items: flex-start; }
+
+  .msg-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 0 4px;
+  }
+
+  .msg-bubble {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .message.user .msg-bubble {
+    background: var(--user-bg);
+    color: var(--user-text);
+    border-bottom-right-radius: 3px;
+  }
+
+  .message.ai .msg-bubble {
+    background: var(--ai-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 3px;
+  }
+
+  .msg-bubble.thinking {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    padding: 14px 18px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--text3);
+    border-radius: 50%;
+    animation: blink 1.2s infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Suggestions */
+  .suggestions {
+    padding: 0 28px 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .suggestion-chip {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-light);
+    border: 1px solid #c5d9d2;
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .suggestion-chip:hover { background: #d6e8e2; }
+
+  /* Input area */
+  .chat-input-area {
+    padding: 16px 28px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .chat-input {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    resize: none;
+    outline: none;
+    line-height: 1.6;
+    min-height: 42px;
+    max-height: 120px;
+    overflow-y: auto;
+    transition: border-color 0.15s;
+  }
+
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-input::placeholder { color: var(--text3); }
+
+  .send-btn {
+    width: 42px;
+    height: 42px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+
+  .send-btn:hover { opacity: 0.85; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; }
+
+  .input-hint {
+    margin-top: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+
+  /* Error */
+  .error-msg {
+    color: #b03030;
+    font-size: 13px;
+    background: #fdf0f0;
+    border: 1px solid #f0c8c8;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    </div>
+    <span class="logo-text">文档问答</span>
+  </div>
+  <div class="doc-status" id="docStatus">未载入文档</div>
+</header>
+
+<div class="main">
+  <!-- Left: Document panel -->
+  <div class="doc-panel">
+    <div class="panel-header">粘贴文档内容</div>
+    <textarea class="doc-textarea" id="docText" placeholder="将文章、合同、报告、笔记等任意文本粘贴到这里…
+
+支持任意长度的文档，粘贴后点击「载入文档」开始提问。"></textarea>
+    <div class="doc-actions">
+      <button class="btn-load" onclick="loadDoc()">载入文档</button>
+      <button class="btn-clear" onclick="clearDoc()">清空</button>
+      <span class="char-count" id="charCount">0 字</span>
+    </div>
+  </div>
+
+  <!-- Right: Chat panel -->
+  <div class="chat-panel">
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">📄</div>
+        <div class="welcome-text">先在左侧粘贴文档内容<br>载入后即可开始提问</div>
+      </div>
+    </div>
+
+    <div class="suggestions" id="suggestions" style="display:none;">
+      <span class="suggestion-chip" onclick="askSuggestion(this)">这篇文档的主要内容是什么？</span>
+      <span class="suggestion-chip" onclick="askSuggestion(this)">总结核心要点</span>
+      <span class="suggestion-chip" onclick="askSuggestion(this)">有哪些关键数据或结论？</span>
+      <span class="suggestion-chip" onclick="askSuggestion(this)">列出文中提到的所有人名或机构</span>
+    </div>
+
+    <div class="chat-input-area">
+      <div class="input-row">
+        <textarea class="chat-input" id="chatInput" placeholder="针对文档提问…" rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Enter 发送 · Shift+Enter 换行</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_KEY = 'sk-8060ffb799eb4724ba0d7fa1c7226f7c';
+const API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+let docContent = '';
+let chatHistory = [];
+let isLoading = false;
+
+// Update char count
+document.getElementById('docText').addEventListener('input', function() {
+  const len = this.value.length;
+  document.getElementById('charCount').textContent = len.toLocaleString() + ' 字';
+});
+
+function loadDoc() {
+  const text = document.getElementById('docText').value.trim();
+  if (!text) { alert('请先粘贴文档内容'); return; }
+
+  docContent = text;
+  chatHistory = [];
+
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('suggestions').style.display = 'flex';
+  document.getElementById('chatMessages').innerHTML = '';
+
+  const status = document.getElementById('docStatus');
+  status.textContent = '已载入 · ' + text.length.toLocaleString() + ' 字';
+  status.className = 'doc-status loaded';
+
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('chatInput').placeholder = '针对文档内容提问…';
+
+  addSystemMessage('文档已载入，可以开始提问了。');
+}
+
+function clearDoc() {
+  document.getElementById('docText').value = '';
+  document.getElementById('charCount').textContent = '0 字';
+  docContent = '';
+  chatHistory = [];
+  document.getElementById('docStatus').textContent = '未载入文档';
+  document.getElementById('docStatus').className = 'doc-status';
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('suggestions').style.display = 'none';
+  const welcome = document.createElement('div');
+  welcome.className = 'welcome';
+  welcome.id = 'welcome';
+  welcome.innerHTML = '<div class="welcome-icon">📄</div><div class="welcome-text">先在左侧粘贴文档内容<br>载入后即可开始提问</div>';
+  document.getElementById('chatMessages').appendChild(welcome);
+}
+
+function addSystemMessage(text) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message ai';
+  div.innerHTML = `<div class="msg-label">助手</div><div class="msg-bubble">${text}</div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addMessage(role, text) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message ' + (role === 'user' ? 'user' : 'ai');
+  const label = role === 'user' ? '你' : '助手';
+  div.innerHTML = `<div class="msg-label">${label}</div><div class="msg-bubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function addThinking() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message ai';
+  div.id = 'thinking';
+  div.innerHTML = `<div class="msg-label">助手</div><div class="msg-bubble thinking"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function askSuggestion(el) {
+  document.getElementById('chatInput').value = el.textContent;
+  sendMessage();
+}
+
+async function sendMessage() {
+  if (isLoading || !docContent) return;
+  const input = document.getElementById('chatInput');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  addMessage('user', question);
+  chatHistory.push({ role: 'user', content: question });
+
+  const thinking = addThinking();
+
+  try {
+    const systemPrompt = `你是一个专业的文档问答助手。用户提供了以下文档内容，请严格基于文档内容回答用户的问题。如果问题无法从文档中找到答案，请明确说明"文档中未提及此内容"，不要编造信息。
+
+【文档内容】
+${docContent}`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...chatHistory.slice(0, -1),
+      { role: 'user', content: question }
+    ];
+
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + API_KEY
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: messages,
+        max_tokens: 2000,
+        temperature: 0.3
+      })
+    });
+
+    const data = await res.json();
+    thinking.remove();
+
+    if (data.error) {
+      const errDiv = document.createElement('div');
+      errDiv.className = 'message ai';
+      errDiv.innerHTML = `<div class="msg-label">助手</div><div class="error-msg">请求失败：${data.error.message}</div>`;
+      document.getElementById('chatMessages').appendChild(errDiv);
+      chatHistory.pop();
+    } else {
+      const reply = data.choices[0].message.content;
+      addMessage('ai', reply);
+      chatHistory.push({ role: 'assistant', content: reply });
+    }
+  } catch (err) {
+    thinking.remove();
+    const errDiv = document.createElement('div');
+    errDiv.className = 'message ai';
+    errDiv.innerHTML = `<div class="msg-label">助手</div><div class="error-msg">网络错误，请检查网络连接后重试。</div>`;
+    document.getElementById('chatMessages').appendChild(errDiv);
+    chatHistory.pop();
+  }
+
+  document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+  input.focus();
+}
+</script>
+</body>
+</html>
