@@ -12,5 +12,26 @@
       "parentId": "id1773937471052707"
     }
   ],
-  "tools": []
+  "tools": [
+    {
+      "id": "id1773937546495532",
+      "name": "EXCEL合并工具",
+      "url": "tools/EXCEL合并.html",
+      "desc": "",
+      "cat": "id1773937492422741",
+      "type": "html",
+      "icon": "📊",
+      "color": "#dbeafe"
+    },
+    {
+      "id": "id1773937599203741",
+      "name": "EXCEL笛卡尔积",
+      "url": "tools/EXCEL笛卡尔积工具.html",
+      "desc": "",
+      "cat": "id1773937492422741",
+      "type": "html",
+      "icon": "📊",
+      "color": "#dbeafe"
+    }
+  ]
 }
