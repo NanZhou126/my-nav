@@ -94,6 +94,16 @@
       "type": "html",
       "icon": "📄",
       "color": "#e0f2fe"
+    },
+    {
+      "id": "id177394361750582",
+      "name": "写作润色",
+      "url": "tools/写作润色.html",
+      "desc": "",
+      "cat": "id1773943602268629",
+      "type": "html",
+      "icon": "📊",
+      "color": "#dbeafe"
     }
   ]
 }
