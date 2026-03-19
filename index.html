@@ -583,6 +583,15 @@ const COLORS  = ['#dbeafe','#ede9fe','#dcfce7','#fef9c3','#fce7f3','#ffedd5','#e
 const STORAGE_KEY   = 'nav_data_v3';
 const GH_CONFIG_KEY = 'nav_gh_config';
 
+// ── 公开读取配置（无需 Token，所有访客共享）────────────────────────────────────
+// 如果你不想每台设备都配置 GitHub，可以在这里直接填写仓库信息
+// 填写后所有打开网页的人都能自动读取 nav_data.json，无需任何操作
+const RAW_OWNER  = '';   // 例：'NanZhou126'
+const RAW_REPO   = '';   // 例：'my-nav'
+const RAW_BRANCH = 'main';
+const RAW_PATH   = 'data/nav_data.json';
+
+
 let ghConfig = (() => {
   try { return JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || 'null') || {}; } catch(e) { return {}; }
 })();
@@ -611,7 +620,32 @@ let selCatEmoji   = '📁';
 let selToolType   = 'html';
 let catExpanded   = {};
 
-// ── GitHub API 工具 ───────────────────────────────────────────────────────────
+// ── 公开读取（raw.githubusercontent.com，无需 Token，所有访客可用） ────────────
+async function rawLoad() {
+  // 优先从本地配置读owner/repo，也支持写在HTML里的硬编码（方便部署）
+  const owner  = ghConfig.owner  || RAW_OWNER;
+  const repo   = ghConfig.repo   || RAW_REPO;
+  const branch = ghConfig.branch || RAW_BRANCH;
+  const path   = ghConfig.path   || RAW_PATH;
+  if (!owner || !repo) return null;
+  const url = 'https://raw.githubusercontent.com/' + owner + '/' + repo + '/' + branch + '/' + path;
+  try {
+    showSyncStatus('loading', '正在加载数据…');
+    const res = await fetch(url + '?t=' + Date.now()); // 防缓存
+    if (!res.ok) {
+      if (res.status === 404) { showSyncStatus('warn', '数据文件不存在，使用默认数据'); return null; }
+      throw new Error('HTTP ' + res.status);
+    }
+    const json = await res.json();
+    showSyncStatus('ok', '数据已加载 ✓');
+    return json;
+  } catch(e) {
+    showSyncStatus('warn', '加载数据失败：' + e.message);
+    return null;
+  }
+}
+
+
 function ghHeaders(token) {
   return {
     'Accept': 'application/vnd.github+json',
@@ -640,7 +674,8 @@ async function ghLoad() {
     }
     const json = await res.json();
     _ghFileSha = json.sha;
-    const decoded = JSON.parse(atob(json.content.replace(/\n/g, '')));
+    const raw = Uint8Array.from(atob(json.content.replace(/\n/g, '')), c => c.charCodeAt(0));
+    const decoded = JSON.parse(new TextDecoder('utf-8').decode(raw));
     showSyncStatus('ok', '已同步 GitHub 数据 ✓');
     return decoded;
   } catch(e) {
@@ -1240,13 +1275,26 @@ selectCat('all');
 updateGhBtn();
 
 (async function() {
-  if (ghConfig.owner && ghConfig.repo) {
-    const remote = await ghLoad();
+  // rawLoad：用 raw.githubusercontent.com 公开读取，无需 Token，所有访客均可用
+  // ghLoad：用 GitHub API 读取，需要 Token，保留 sha 供后续写入
+  const hasRawConfig = (ghConfig.owner || RAW_OWNER) && (ghConfig.repo || RAW_REPO);
+  if (hasRawConfig) {
+    const remote = await rawLoad();
     if (remote) {
       data = remote;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
       renderSidebar();
       selectCat(currentCat);
+    }
+    // 如果是管理员（有 token），额外调一次 ghLoad 拿到 sha，以便后续写入
+    if (ghConfig.owner && ghConfig.repo && ghConfig.token) {
+      const apiRes = await ghLoad();
+      if (apiRes) {
+        data = apiRes;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+        renderSidebar();
+        selectCat(currentCat);
+      }
     }
   } else {
     showSyncStatus('warn', '💡 未配置 GitHub，当前使用本地浏览器存储（换浏览器数据不同步）');
