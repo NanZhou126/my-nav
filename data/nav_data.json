@@ -61,7 +61,17 @@
       "desc": "",
       "cat": "id1773937657172455",
       "type": "html",
-      "icon": "📊",
+      "icon": "🧩",
+      "color": "#dbeafe"
+    },
+    {
+      "id": "id1773937757484877",
+      "name": "Claude Code镜像",
+      "url": "https://claude.aigc.bar/",
+      "desc": "",
+      "cat": "id1773937657172455",
+      "type": "html",
+      "icon": "🧩",
       "color": "#dbeafe"
     }
   ]
