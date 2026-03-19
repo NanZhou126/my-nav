@@ -403,7 +403,7 @@
   </div>
   <div class="header-right">
     <button class="admin-toggle-btn" id="adminToggleBtn" onclick="toggleAdminMode()">⚙️ 管理</button>
-    <button class="admin-toggle-btn" id="ghConfigBtn" onclick="openGhConfigModal()" title="GitHub 数据库配置（未配置）" style="margin-left:8px">🔗 GitHub</button>
+    <button class="admin-toggle-btn" id="ghConfigBtn" onclick="openGhConfigModal()" title="GitHub 数据库配置（未配置）" style="display:none">🔗 GitHub</button>
   </div>
 </header>
 
@@ -583,11 +583,11 @@ const COLORS  = ['#dbeafe','#ede9fe','#dcfce7','#fef9c3','#fce7f3','#ffedd5','#e
 const STORAGE_KEY   = 'nav_data_v3';
 const GH_CONFIG_KEY = 'nav_gh_config';
 
-// ── 公开读取配置（无需 Token，所有访客共享）────────────────────────────────────
-// 如果你不想每台设备都配置 GitHub，可以在这里直接填写仓库信息
-// 填写后所有打开网页的人都能自动读取 nav_data.json，无需任何操作
-const RAW_OWNER  = 'NanZhou126';   // 例：'NanZhou126'
-const RAW_REPO   = 'my-nav';   // 例：'my-nav'
+// ── 公开读取配置（必填！所有访客共享，无需 Token）────────────────────────────
+// ⚠️ 这里直接硬编码仓库信息，所有人打开页面都会自动从 GitHub 读取最新数据
+// 仓库必须是 public，或者文件本身是 public 可访问的
+const RAW_OWNER  = 'NanZhou126';        // ← 你的 GitHub 用户名
+const RAW_REPO   = 'my-nav';            // ← 你的仓库名
 const RAW_BRANCH = 'main';
 const RAW_PATH   = 'data/nav_data.json';
 
@@ -978,6 +978,7 @@ function toggleAdminMode() {
     const btn = document.getElementById('adminToggleBtn');
     btn.classList.remove('active');
     btn.textContent = '⚙️ 管理';
+    document.getElementById('ghConfigBtn').style.display = 'none';
   } else {
     openModal('adminModal');
     document.getElementById('adminPwdInput').value = '';
@@ -996,6 +997,7 @@ async function verifyAdmin() {
     btn.classList.add('active');
     btn.innerHTML = '⚙️ 管理中 &nbsp;<small style="opacity:.7;font-weight:400">点击退出</small>';
     closeModal('adminModal');
+    document.getElementById('ghConfigBtn').style.display = '';
   } else {
     const inp = document.getElementById('adminPwdInput');
     inp.style.borderColor = '#ef4444';
