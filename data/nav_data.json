@@ -1,4 +1,10 @@
 {
-  "categories": [],
+  "categories": [
+    {
+      "id": "id1773937471052707",
+      "name": "文件处理",
+      "icon": "🗂️"
+    }
+  ],
   "tools": []
 }
