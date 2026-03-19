@@ -1440,6 +1440,61 @@ function hideLoading() {
     if (el) el.style.display = 'none';
 }
 
+// ==================== 空白行/列裁剪工具 ====================
+/**
+ * 剔除 sheet_to_json 返回的尾部空白行 & 全空列，防止卡死。
+ * 规则：
+ *  - 空白行：整行所有单元格均为 ''、null 或 undefined → 删除
+ *  - 空白列：某一列在【所有行】中均为 '' / null / undefined → 删除该列索引
+ * @param {Array[]} rows  sheet_to_json({ header:1, defval:'' }) 的原始二维数组
+ * @returns {Array[]}     清理后的二维数组
+ */
+function trimEmptyRowsAndCols(rows) {
+    if (!rows || rows.length === 0) return rows;
+
+    // 1. 去掉尾部连续空行（从末尾向前扫）
+    let lastDataRow = -1;
+    for (let r = rows.length - 1; r >= 0; r--) {
+        const row = rows[r];
+        if (row && row.some(cell => cell !== '' && cell !== null && cell !== undefined)) {
+            lastDataRow = r;
+            break;
+        }
+    }
+    if (lastDataRow === -1) return []; // 全是空行
+    const trimmedRows = rows.slice(0, lastDataRow + 1);
+
+    // 2. 找出最大列数
+    const maxCols = Math.max(...trimmedRows.map(r => r ? r.length : 0));
+    if (maxCols === 0) return trimmedRows;
+
+    // 3. 统计哪些列有数据（只要任意一行该列不为空即视为有效列）
+    const colHasData = new Array(maxCols).fill(false);
+    for (const row of trimmedRows) {
+        if (!row) continue;
+        for (let c = 0; c < row.length; c++) {
+            const v = row[c];
+            if (v !== '' && v !== null && v !== undefined) {
+                colHasData[c] = true;
+            }
+        }
+    }
+
+    // 4. 找到最后一个有数据的列，去掉其后的全空列
+    let lastDataCol = -1;
+    for (let c = maxCols - 1; c >= 0; c--) {
+        if (colHasData[c]) { lastDataCol = c; break; }
+    }
+    if (lastDataCol === -1) return []; // 全是空列
+
+    // 5. 截断每行到 lastDataCol+1，同时移除中间的全空列（保留稀疏中间空列，仅截尾）
+    //    注意：中间空列一般是用户故意分隔区域，不要随意删除；只截掉尾部空列
+    return trimmedRows.map(row => {
+        if (!row) return new Array(lastDataCol + 1).fill('');
+        return row.slice(0, lastDataCol + 1);
+    });
+}
+
 // ==================== 文件处理 ====================
 async function processFiles(files) {
     const validFiles = files.filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
@@ -1523,22 +1578,22 @@ async function parseFile(file) {
                     // 每个选中的 sheet 作为独立"文件"载入
                     for (const sheetName of chosen) {
                         const sheet = wb.Sheets[sheetName];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                        const colCount = Math.max(...rows.slice(0, 5).map(r => r.length), 0);
+                        const rows = trimEmptyRowsAndCols(XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }));
+                        const colCount = Math.max(...rows.map(r => r.length), 0);
                         if (colCount > MAX_COLS) {
                             showToast(`⚠️ ${file.name}[${sheetName}] 列数(${colCount})超过${MAX_COLS}列限制，已跳过`);
                             continue;
                         }
                         const displayName = sheetNames.length > 1 ? `${file.name}[${sheetName}]` : file.name;
                         uploadedFiles.push(new File([file], displayName, { type: file.type }));
-                        parsedData.push({ fileName: displayName, rawRows: rows, sheetNames, selectedSheet: sheetName });
+                        parsedData.push({ fileName: displayName, rawRows: rows, sheetNames, selectedSheet: sheetName, _trimmed: true });
                         headerRowNumbers[parsedData.length - 1] = 1;
                     }
                 } else {
                     // 单 Sheet
                     const sheet = wb.Sheets[sheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                    const colCount = Math.max(...rows.slice(0, 5).map(r => r.length), 0);
+                    const rows = trimEmptyRowsAndCols(XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }));
+                    const colCount = Math.max(...rows.map(r => r.length), 0);
                     if (colCount > MAX_COLS) {
                         showToast(`⚠️ ${file.name} 列数(${colCount})超过${MAX_COLS}列限制`);
                         resolve(); return;
