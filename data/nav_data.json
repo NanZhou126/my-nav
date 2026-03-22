@@ -104,6 +104,16 @@
       "type": "html",
       "icon": "📄",
       "color": "#dbeafe"
+    },
+    {
+      "id": "id1774195079571975",
+      "name": "EXCEL模板数据填充",
+      "url": "tools/EXCEL模板数据填充工具.html",
+      "desc": "",
+      "cat": "id1773937492422741",
+      "type": "html",
+      "icon": "📊",
+      "color": "#ffedd5"
     }
   ]
 }
