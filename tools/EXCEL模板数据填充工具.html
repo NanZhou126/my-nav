@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📋 Excel 模板数据填充工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;background:#faf3e0;min-height:100vh;padding:20px;}
+.container{max-width:1350px;margin:0 auto;}
+h1{color:#ff6b9d;text-align:center;margin-bottom:30px;font-size:2.2rem;font-weight:700;text-shadow:3px 3px 0 #fee440;letter-spacing:-0.5px;}
+.card{background:#ffffffdd;border-radius:32px;padding:28px;margin-bottom:22px;box-shadow:0 15px 30px -10px rgba(255,107,157,.2),0 0 0 2px #fee440 inset,0 0 0 4px #a2e3c4 inset;border:3px solid #9b5de5;}
+.section-title{font-size:1.5rem;color:#9b5de5;margin-bottom:18px;display:flex;align-items:center;gap:12px;font-weight:700;text-shadow:2px 2px 0 #fee440;}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:700px){.upload-grid{grid-template-columns:1fr;}}
+.upload-box{border:4px dashed #ff6b9d;border-radius:24px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .3s;background:#fff0f5;box-shadow:0 8px 0 #9b5de5;position:relative;}
+.upload-box.has-file{border-color:#00bbf9;background:#e0f9ff;box-shadow:0 8px 0 #00bbf9;}
+.upload-box:hover{transform:translateY(-4px);box-shadow:0 12px 0 #9b5de5;background:#ffe9f0;}
+.upload-box.dragover{border-color:#00bbf9;background:#e0f2fe;transform:scale(1.02);}
+.upload-icon{font-size:3.5rem;margin-bottom:12px;filter:drop-shadow(3px 3px 0 #fee440);}
+.upload-label{font-size:1.15rem;font-weight:700;color:#3b2e6b;margin-bottom:8px;}
+.upload-sub{font-size:.9rem;color:#ff6b9d;font-weight:500;}
+.upload-box input[type=file]{display:none;}
+.file-badge{display:inline-flex;align-items:center;gap:8px;background:#a2e3c4;border:3px solid #9b5de5;border-radius:50px;padding:8px 18px;margin-top:12px;font-weight:700;color:#3b2e6b;font-size:.95rem;}
+.file-badge .remove-btn{background:#ff6b9d;color:#fff;border:2px solid #3b2e6b;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;}
+/* header row panel */
+.header-row-panel{background:#fee440;border-radius:60px;padding:16px 22px;margin-bottom:22px;display:flex;flex-wrap:wrap;gap:18px;align-items:center;border:3px solid #9b5de5;box-shadow:0 8px 0 #9b5de5;}
+.header-row-item{display:flex;align-items:center;gap:10px;background:#fff;padding:8px 16px;border-radius:40px;border:2px solid #9b5de5;box-shadow:0 3px 0 #9b5de5;}
+.header-row-item span{font-weight:700;color:#ff6b9d;white-space:nowrap;}
+.header-row-item input{width:65px;padding:6px 10px;border:2px solid #00bbf9;border-radius:30px;font-size:1rem;text-align:center;outline:none;font-weight:600;}
+.header-row-item input.invalid{border-color:#ff6b9d;background:#ffe9f0;}
+.apply-btn{background:#00bbf9;color:#3b2e6b;border:3px solid #3b2e6b;padding:10px 26px;border-radius:40px;font-weight:700;font-size:1rem;cursor:pointer;box-shadow:0 5px 0 #3b2e6b;transition:all .15s;}
+.apply-btn:hover{transform:translateY(-2px);box-shadow:0 7px 0 #3b2e6b;}
+.apply-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #3b2e6b;}
+/* mapping */
+.mapping-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;padding:14px 20px;background:#a2e3c4;border-radius:50px;border:3px solid #9b5de5;box-shadow:0 5px 0 #9b5de5;align-items:center;}
+.legend-item{display:flex;align-items:center;gap:8px;font-weight:600;color:#3b2e6b;font-size:.88rem;}
+.legend-dot{width:14px;height:14px;border-radius:50%;border:2px solid #3b2e6b;flex-shrink:0;}
+.sheet-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.sheet-tab{padding:8px 18px;border-radius:50px;border:3px solid #9b5de5;background:#fff;font-weight:700;font-size:.9rem;cursor:pointer;color:#3b2e6b;box-shadow:0 4px 0 #9b5de5;transition:all .15s;}
+.sheet-tab:hover{background:#fee440;transform:translateY(-2px);box-shadow:0 6px 0 #9b5de5;}
+.sheet-tab.active{background:#ff6b9d;color:#fff;transform:translateY(2px);box-shadow:0 2px 0 #9b5de5;}
+.map-table-wrap{overflow:auto;max-height:460px;border:3px solid #9b5de5;border-radius:20px;background:#fff0f5;box-shadow:0 8px 0 #9b5de5;}
+.map-table{width:100%;border-collapse:collapse;min-width:600px;}
+.map-table th,.map-table td{padding:12px 16px;border:2px solid #9b5de5;text-align:left;}
+.map-table th{background:#00bbf9;color:#3b2e6b;font-weight:700;position:sticky;top:0;z-index:10;border-bottom:3px solid #9b5de5;}
+.map-table th.tpl-col{background:#a2e3c4;}
+.map-table tr:nth-child(even) td{background:#fce2db;}
+.map-table tr:hover td{background:#ffe9f0;}
+.col-status{display:inline-block;padding:3px 12px;border-radius:30px;font-size:.85rem;font-weight:700;border:2px solid #3b2e6b;}
+.col-status.matched{background:#a2e3c4;color:#1a7a4a;}
+.col-status.fuzzy{background:#ffe0a0;color:#7a5000;}
+.col-status.unmatched{background:#fee440;color:#7a5c00;}
+.map-select{width:100%;padding:8px 12px;border:3px solid #00bbf9;border-radius:30px;font-size:.9rem;font-weight:600;background:#fff;outline:none;cursor:pointer;}
+.map-select:focus{border-color:#9b5de5;box-shadow:0 0 0 3px #fee440;}
+.map-select.matched{border-color:#a2e3c4;background:#f0fff9;}
+.map-select.fuzzy{border-color:#f5a623;background:#fffbf0;}
+.map-select.unmatched{border-color:#fee440;background:#fffde0;}
+.map-select.dup-error{border-color:#ff3b30!important;background:#fff0f0!important;box-shadow:0 0 0 3px rgba(255,59,48,.25);}
+.dup-warn{color:#ff3b30;font-size:.8rem;font-weight:700;margin-top:4px;display:block;}
+.data-rename-input{padding:7px 12px;border:2px solid #ff6b9d;border-radius:30px;font-size:.88rem;font-weight:600;outline:none;width:100%;}
+.data-rename-input:focus{border-color:#9b5de5;box-shadow:0 0 0 3px #fee440;}
+.data-rename-input.modified{border-color:#a2e3c4;background:#f0fff9;}
+.sample-val{font-size:.8rem;color:#00bbf9;padding:3px 10px;background:#f0f9ff;border-radius:20px;border:1px solid #00bbf9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;display:inline-block;}
+/* buttons */
+.btn-group{display:flex;gap:14px;flex-wrap:wrap;margin-top:18px;}
+.btn{padding:13px 26px;border-radius:60px;font-size:1.05rem;font-weight:700;cursor:pointer;border:3px solid #3b2e6b;box-shadow:0 6px 0 #3b2e6b;transition:all .15s;}
+.btn:hover{transform:translateY(-3px);box-shadow:0 9px 0 #3b2e6b;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 #3b2e6b;}
+.btn-primary{background:#00bbf9;color:#3b2e6b;}
+.btn-success{background:#a2e3c4;color:#3b2e6b;}
+.btn-warning{background:#fee440;color:#3b2e6b;}
+.btn-danger{background:#ff6b9d;color:#fff;}
+.btn-purple{background:#9b5de5;color:#fff;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:0 4px 0 #999;border-color:#999;}
+.hidden{display:none!important;}
+.stats-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;}
+.stat-chip{background:#ff6b9d;color:#fff;padding:10px 20px;border-radius:40px;font-weight:700;border:3px solid #3b2e6b;box-shadow:0 5px 0 #3b2e6b;font-size:.95rem;}
+.stat-chip span{font-size:1.3rem;font-weight:800;}
+.alert{padding:14px 22px;border-radius:50px;margin-bottom:16px;font-weight:600;border:3px solid #3b2e6b;box-shadow:0 5px 0 #3b2e6b;}
+.alert-info{background:#a2e3c4;color:#3b2e6b;}
+.alert-warn{background:#fee440;color:#3b2e6b;}
+/* unmatched panel */
+.unmatched-panel{margin-top:18px;border:3px solid #f5a623;border-radius:20px;background:#fffbf0;box-shadow:0 6px 0 #f5a623;overflow:hidden;}
+.unmatched-panel-header{background:#f5a623;color:#3b2e6b;font-weight:700;padding:12px 20px;font-size:1rem;display:flex;align-items:center;gap:10px;}
+.unmatched-cols-grid{display:flex;flex-wrap:wrap;gap:10px;padding:16px;}
+.unmatched-col-chip{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:30px;font-size:.88rem;font-weight:600;border:2px solid #3b2e6b;}
+.unmatched-col-chip.has-data{background:#fce2db;color:#3b2e6b;}
+.unmatched-col-chip.no-data{background:#eee;color:#888;}
+/* ========== PREVIEW TABLE ========== */
+.preview-toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:14px 18px;background:#fee440;border-radius:50px;border:3px solid #9b5de5;box-shadow:0 5px 0 #9b5de5;}
+.preview-search{flex:1;min-width:160px;padding:9px 18px;border:3px solid #9b5de5;border-radius:40px;font-size:.95rem;font-weight:600;outline:none;background:#fff;}
+.preview-search:focus{border-color:#ff6b9d;}
+.preview-wrap{overflow:auto;max-height:560px;border:3px solid #9b5de5;border-radius:20px;background:#fff;box-shadow:0 10px 0 #9b5de5;position:relative;}
+/* preview table with sticky header rows */
+.preview-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:.92rem;}
+.preview-tbl thead tr:first-child th{position:sticky!important;top:0!important;z-index:100!important;background:#00bbf9!important;color:#3b2e6b;font-weight:700;border-bottom:3px solid #9b5de5!important;white-space:nowrap;cursor:pointer;user-select:none;padding:10px 14px;border-right:2px solid #9b5de5;}
+.preview-tbl thead tr:first-child th:hover{background:#89dcfa!important;}
+.preview-tbl thead tr.filter-row th{position:sticky!important;top:41px!important;z-index:90!important;background:#a2e3c4!important;padding:6px 6px;border-bottom:3px solid #9b5de5!important;border-right:2px solid #9b5de5;}
+/* frozen row-number col */
+.preview-tbl th.frozen-col,.preview-tbl td.frozen-col{position:sticky!important;left:0!important;z-index:80!important;background:#fee440!important;color:#3b2e6b!important;font-weight:700;text-align:center;min-width:62px;width:62px;border-right:3px solid #9b5de5!important;white-space:nowrap;}
+.preview-tbl thead tr:first-child th.frozen-col{z-index:110!important;background:#ff6b9d!important;color:#fff!important;}
+.preview-tbl thead tr.filter-row th.frozen-col{z-index:100!important;background:#f18f01!important;}
+.preview-tbl td{padding:9px 14px;border-bottom:2px solid #ddd;border-right:2px solid #ddd;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;}
+.preview-tbl tbody tr:nth-child(even) td{background:#fce2db;}
+.preview-tbl tbody tr:nth-child(even) td.frozen-col{background:#f8d5c9!important;}
+.preview-tbl tbody tr:hover td{background:#ffe9f0!important;}
+.preview-tbl td.filled{background:#e0fff4;font-weight:600;color:#0a6b3b;}
+.preview-tbl tbody tr:hover td.filled{background:#b8f5e0!important;}
+.sort-icon{font-size:.75rem;margin-left:4px;}
+/* filter cell inside filter-row */
+.filter-cell{display:flex;align-items:center;gap:4px;min-width:100px;}
+.filter-input{flex:1;min-width:70px;padding:5px 10px;border:2px solid #9b5de5;border-radius:20px;font-size:.82rem;font-weight:600;outline:none;background:#fff;}
+.filter-input:focus{border-color:#ff6b9d;}
+.filter-input.active{border-color:#ff6b9d;background:#fff0f5;}
+.filter-mode-btn{padding:4px 8px;border:2px solid #9b5de5;border-radius:20px;background:#fff;font-size:.78rem;cursor:pointer;font-weight:700;color:#9b5de5;white-space:nowrap;position:relative;}
+.filter-mode-btn.has-mode{background:#ff6b9d;color:#fff;border-color:#3b2e6b;}
+/* filter dropdown */
+.filter-dropdown{position:absolute;top:100%;left:0;z-index:500;background:#fff;border:3px solid #9b5de5;border-radius:16px;box-shadow:0 10px 30px rgba(155,93,229,.2);min-width:130px;overflow:hidden;margin-top:4px;}
+.filter-dropdown-item{padding:9px 14px;cursor:pointer;font-size:.85rem;font-weight:600;color:#3b2e6b;border-bottom:1px solid #f0e6ff;display:flex;align-items:center;gap:6px;}
+.filter-dropdown-item:last-child{border-bottom:none;}
+.filter-dropdown-item:hover{background:#fee440;}
+.filter-dropdown-item.selected{background:#a2e3c4;}
+/* filter status bar */
+.filter-status{padding:10px 20px;background:#fee440;border-radius:40px;border:2px solid #9b5de5;font-weight:600;color:#3b2e6b;font-size:.9rem;display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.clear-filters-btn{padding:5px 14px;border-radius:20px;border:2px solid #3b2e6b;background:#ff6b9d;color:#fff;font-weight:700;cursor:pointer;font-size:.82rem;}
+.highlight-match{background:#fee440;color:#3b2e6b;border-radius:3px;padding:0 1px;font-weight:700;}
+
+/* ========== PAGINATION (optimized, matches merge tool style) ========== */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 20px;
+  padding: 15px 20px;
+  background: #a2e3c4;
+  border-radius: 60px;
+  border: 3px solid #9b5de5;
+  box-shadow: 0 6px 0 #9b5de5;
+}
+.pagination-info {
+  font-weight: 700;
+  color: #3b2e6b;
+  font-size: .9rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pagination-info strong {
+  color: #ff6b9d;
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.page-btn {
+  min-width: 42px;
+  height: 42px;
+  border: 3px solid #3b2e6b;
+  border-radius: 50%;
+  background: white;
+  color: #3b2e6b;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #3b2e6b;
+  transition: all 0.15s;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.page-btn:hover:not(:disabled) {
+  background: #fee440;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #3b2e6b;
+}
+.page-btn.active {
+  background: #ff6b9d;
+  color: white;
+  border-color: #3b2e6b;
+  box-shadow: 0 2px 0 #3b2e6b;
+  transform: translateY(2px);
+}
+.page-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #3b2e6b;
+}
+.page-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 0 #aaa;
+  border-color: #aaa;
+  color: #aaa;
+}
+.page-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 42px;
+  font-weight: 700;
+  color: #9b5de5;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.page-size-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.page-size-label {
+  font-size: .88rem;
+  font-weight: 700;
+  color: #3b2e6b;
+  white-space: nowrap;
+}
+.page-size-select {
+  padding: 8px 14px;
+  border: 3px solid #00bbf9;
+  border-radius: 40px;
+  font-size: .9rem;
+  font-weight: 600;
+  background: white;
+  cursor: pointer;
+  outline: none;
+}
+.page-size-select:focus {
+  border-color: #9b5de5;
+}
+
+/* confirm / sheet picker */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;}
+.confirm-dialog{background:#fff;border-radius:28px;padding:32px;border:4px solid #9b5de5;box-shadow:0 20px 0 #9b5de5;max-width:480px;width:90%;}
+.confirm-dialog h3{color:#9b5de5;margin-bottom:12px;font-size:1.4rem;}
+.sheet-list{display:flex;flex-direction:column;gap:8px;margin:16px 0;}
+.sheet-item{padding:12px 18px;border:3px solid #9b5de5;border-radius:40px;cursor:pointer;font-weight:700;color:#3b2e6b;background:#fff;transition:all .15s;}
+.sheet-item:hover{background:#fee440;}
+.sheet-item.selected{background:#a2e3c4;border-color:#3b2e6b;}
+.dialog-btns{display:flex;gap:12px;margin-top:18px;}
+.d-cancel{flex:1;padding:12px;border-radius:40px;border:3px solid #3b2e6b;background:#eee;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #3b2e6b;}
+.d-confirm{flex:1;padding:12px;border-radius:40px;border:3px solid #3b2e6b;background:#00bbf9;color:#3b2e6b;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #3b2e6b;}
+/* toast */
+.toast-wrap{position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;}
+.toast{background:#3b2e6b;color:#fff;padding:14px 22px;border-radius:50px;font-weight:700;border:3px solid #fee440;box-shadow:0 8px 0 rgba(0,0,0,.3);animation:toastIn .3s ease;max-width:360px;}
+@keyframes toastIn{from{opacity:0;transform:translateX(60px);}to{opacity:1;transform:translateX(0);}}
+</style>
+</head>
+<body>
+<div class="toast-wrap" id="toastWrap"></div>
+<div class="container">
+<h1>📋 Excel 模板数据填充工具</h1>
+
+<!-- Step 1 -->
+<div class="card">
+  <div class="section-title">📁 第一步：上传文件</div>
+  <div class="upload-grid">
+    <div>
+      <div style="font-weight:700;color:#9b5de5;margin-bottom:10px;">📋 模板文档</div>
+      <div class="upload-box" id="tplZone" onclick="document.getElementById('tplInput').click()">
+        <div class="upload-icon">📄</div>
+        <div class="upload-label">点击或拖拽上传模板文档</div>
+        <div class="upload-sub">支持 .xlsx / .xls / .csv</div>
+        <div id="tplBadge" class="hidden"><div class="file-badge"><span id="tplFileName">-</span><button class="remove-btn" onclick="event.stopPropagation();removeTpl()">✕</button></div></div>
+        <input type="file" id="tplInput" accept=".xlsx,.xls,.csv" onchange="handleTplUpload(this.files[0])">
+      </div>
+    </div>
+    <div>
+      <div style="font-weight:700;color:#9b5de5;margin-bottom:10px;">📊 数据文档</div>
+      <div class="upload-box" id="dataZone" onclick="document.getElementById('dataInput').click()">
+        <div class="upload-icon">📊</div>
+        <div class="upload-label">点击或拖拽上传数据文档</div>
+        <div class="upload-sub">支持 .xlsx / .xls / .csv</div>
+        <div id="dataBadge" class="hidden"><div class="file-badge"><span id="dataFileName">-</span><button class="remove-btn" onclick="event.stopPropagation();removeData()">✕</button></div></div>
+        <input type="file" id="dataInput" accept=".xlsx,.xls,.csv" onchange="handleDataUpload(this.files[0])">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 2 -->
+<div class="card hidden" id="headerSection">
+  <div class="section-title">🔢 第二步：设置表头行</div>
+  <div class="header-row-panel" id="headerRowPanel"></div>
+</div>
+
+<!-- Step 3 -->
+<div class="card hidden" id="mappingSection">
+  <div class="section-title">🔗 第三步：列名匹配设置</div>
+  <div class="mapping-legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#a2e3c4"></div>精准匹配</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ffe0a0;border-color:#f5a623"></div>🔶 模糊匹配</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fee440"></div>未匹配</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff9090;border-color:#ff3b30"></div>⚠️ 重复映射</div>
+    <div style="margin-left:auto;font-size:.85rem;color:#9b5de5;font-weight:600;">同一数据列不可映射到多个模板列</div>
+  </div>
+  <div class="stats-row" id="matchStats"></div>
+  <div id="dataSheetTabsWrap" class="hidden">
+    <div style="font-weight:700;color:#9b5de5;margin-bottom:8px;font-size:.95rem;">📑 数据文档 Sheet：</div>
+    <div class="sheet-tabs" id="dataSheetTabs"></div>
+  </div>
+  <div class="map-table-wrap">
+    <table class="map-table"><thead id="mapTableHead"></thead><tbody id="mapTableBody"></tbody></table>
+  </div>
+  <div id="unmatchedPanel" class="unmatched-panel hidden">
+    <div class="unmatched-panel-header">📭 数据文档中未匹配的列</div>
+    <div class="unmatched-cols-grid" id="unmatchedColsGrid"></div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="autoMatchColumns()">🤖 自动匹配列名</button>
+    <button class="btn btn-warning" onclick="clearAllMappings()">🧹 清除所有匹配</button>
+    <button class="btn btn-success" onclick="doFill()">✨ 执行填充</button>
+  </div>
+</div>
+
+<!-- Step 4 -->
+<div class="card hidden" id="previewSection">
+  <div class="section-title">👀 第四步：预览结果并下载</div>
+  <div id="fillAlert"></div>
+  <div class="stats-row" id="previewStats"></div>
+  <!-- toolbar -->
+  <div class="preview-toolbar">
+    <input class="preview-search" id="pvSearch" type="text" placeholder="🔍 全局搜索…" oninput="onGlobalSearch()">
+    <span id="pvRowCount" style="font-weight:700;color:#3b2e6b;font-size:.9rem;white-space:nowrap;"></span>
+    <button class="btn btn-warning" style="padding:8px 18px;font-size:.88rem;" onclick="clearAllFilters()">🗑️ 清除筛选</button>
+  </div>
+  <div id="pvFilterStatus"></div>
+  <div class="preview-wrap" id="pvWrap">
+    <table class="preview-tbl" id="pvTable">
+      <thead id="pvHead"></thead>
+      <tbody id="pvBody"></tbody>
+    </table>
+  </div>
+  <!-- Optimized pagination bar -->
+  <div id="pvPagination"></div>
+  <div class="btn-group">
+    <button class="btn btn-purple" onclick="downloadResult()">⬇️ 下载文档</button>
+    <button class="btn btn-danger" onclick="resetAll()">🔄 重新开始</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ==================== STATE ====================
+let tplFile=null,dataFile=null,tplParsed=null,dataParsed=null;
+let tplHeaderRow=1,dataHeaderRow=1;
+let activeTplSheet='',activeDataSheet='';
+let columnMappings={};
+let dataColRename={};
+let fuzzyMatchedCols=new Set();
+let filledWorkbook=null;
+let tplFileBytes=null;
+
+// Preview state
+let pvAllRows=[];
+let pvHeaders=[];
+let pvDataByCol={};
+let pvActiveFilters={};
+let pvGlobalSearch='';
+let pvSortCol=null,pvSortDir=1;
+let pvCurrentPage=1,pvPageSize=50;
+const PV_PAGE_SIZES=[20,50,100,200,500];
+let pvOpenFilterDropdown=null;
+
+// ==================== TOAST ====================
+function showToast(msg,dur=3000){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.getElementById('toastWrap').appendChild(t);
+  setTimeout(()=>t.remove(),dur);
+}
+function escapeHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escapeJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+
+// ==================== FILE PARSE ====================
+function parseFile(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const buf=e.target.result;
+        const data=new Uint8Array(buf);
+        const wb=XLSX.read(data,{type:'array',cellDates:true,cellStyles:true,cellNF:true,raw:false});
+        const result={fileName:file.name,sheetNames:wb.SheetNames,sheets:{},wb,bytes:data};
+        wb.SheetNames.forEach(sn=>{
+          const ws=wb.Sheets[sn];
+          if(!ws){result.sheets[sn]=[];return;}
+          result.sheets[sn]=sheetToRows(ws);
+        });
+        resolve(result);
+      }catch(err){reject(err);}
+    };
+    reader.onerror=reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function sheetToRows(ws){
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+  const rawRows=[];
+  for(let r=range.s.r;r<=range.e.r;r++){
+    const row=[];
+    for(let c=range.s.c;c<=range.e.c;c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      let val='';
+      if(cell){
+        if(cell.t==='n') val=cell.v;
+        else if(cell.t==='d') val=cell.w||cell.v;
+        else val=cell.w!==undefined?cell.w:cell.v;
+      }
+      row.push(val!==undefined&&val!==null?val:'');
+    }
+    rawRows.push(row);
+  }
+  return trimEmptyRowsAndCols(rawRows);
+}
+
+function trimEmptyRowsAndCols(rows){
+  if(!rows||rows.length===0) return rows;
+  let lastDataRow=-1;
+  for(let r=rows.length-1;r>=0;r--){
+    if(rows[r]&&rows[r].some(c=>c!==''&&c!==null&&c!==undefined)){lastDataRow=r;break;}
+  }
+  if(lastDataRow===-1) return [];
+  const trimmed=rows.slice(0,lastDataRow+1);
+  const maxCols=Math.max(...trimmed.map(r=>r?r.length:0));
+  if(maxCols===0) return trimmed;
+  let lastDataCol=-1;
+  for(let c=maxCols-1;c>=0;c--){
+    if(trimmed.some(r=>r&&r[c]!==''&&r[c]!==null&&r[c]!==undefined)){lastDataCol=c;break;}
+  }
+  if(lastDataCol===-1) return [];
+  return trimmed.map(r=>r?r.slice(0,lastDataCol+1):new Array(lastDataCol+1).fill(''));
+}
+
+function getActiveRows(parsed,sheet){return parsed?parsed.sheets[sheet]||[]:[]; }
+function extractHeaders(rows,hr){
+  if(!rows||rows.length<hr) return [];
+  return (rows[hr-1]||[]).map(c=>String(c??'').trim());
+}
+function getDataCols(rows,hr){
+  const headers=extractHeaders(rows,hr);
+  return headers.map((h,ci)=>{
+    let hasData=false;
+    for(let r=hr;r<rows.length;r++){
+      const v=(rows[r]||[])[ci];
+      if(v!==undefined&&v!==null&&String(v).trim()!==''){hasData=true;break;}
+    }
+    return {index:ci,original:h,hasData};
+  }).filter(dc=>dc.hasData||(dc.original&&dc.original.trim()!==''));
+}
+function getSample(rows,hr,ci){
+  for(let r=hr;r<Math.min(rows.length,hr+5);r++){
+    const v=(rows[r]||[])[ci];
+    if(v!==undefined&&v!==null&&String(v).trim()!=='') return String(v);
+  }
+  return '';
+}
+function getEffectiveDataColName(orig){return dataColRename[orig]??orig;}
+
+// ==================== UPLOAD ====================
+async function handleTplUpload(file){
+  if(!file)return;
+  showToast('⏳ 正在解析模板文档…');
+  try{
+    tplParsed=await parseFile(file);
+    tplFile=file;
+    tplFileBytes=tplParsed.bytes;
+    if(tplParsed.sheetNames.length>1) activeTplSheet=await pickSheet(file.name,tplParsed.sheetNames,'模板文档');
+    else activeTplSheet=tplParsed.sheetNames[0];
+    document.getElementById('tplFileName').textContent=file.name.length>28?file.name.slice(0,25)+'…':file.name;
+    document.getElementById('tplBadge').classList.remove('hidden');
+    document.getElementById('tplZone').classList.add('has-file');
+    showToast('✅ 模板文档已加载：'+activeTplSheet);
+    tryInitMapping();
+  }catch(e){showToast('❌ 解析失败：'+e.message,5000);}
+}
+async function handleDataUpload(file){
+  if(!file)return;
+  showToast('⏳ 正在解析数据文档…');
+  try{
+    dataParsed=await parseFile(file);
+    dataFile=file;
+    if(dataParsed.sheetNames.length>1) activeDataSheet=await pickSheet(file.name,dataParsed.sheetNames,'数据文档');
+    else activeDataSheet=dataParsed.sheetNames[0];
+    document.getElementById('dataFileName').textContent=file.name.length>28?file.name.slice(0,25)+'…':file.name;
+    document.getElementById('dataBadge').classList.remove('hidden');
+    document.getElementById('dataZone').classList.add('has-file');
+    showToast('✅ 数据文档已加载：'+activeDataSheet);
+    tryInitMapping();
+  }catch(e){showToast('❌ 解析失败：'+e.message,5000);}
+}
+function pickSheet(fileName,sheetNames,label){
+  return new Promise(resolve=>{
+    if(sheetNames.length===1){resolve(sheetNames[0]);return;}
+    const overlay=document.createElement('div');
+    overlay.className='confirm-overlay';
+    overlay.innerHTML=`<div class="confirm-dialog">
+      <h3>📑 选择 ${escapeHtml(label)} Sheet</h3>
+      <p style="color:#666;margin:8px 0;">文件 <strong>${escapeHtml(fileName)}</strong> 包含多个 Sheet：</p>
+      <div class="sheet-list">${sheetNames.map((s,i)=>`<div class="sheet-item${i===0?' selected':''}" data-sheet="${escapeHtml(s)}" onclick="this.parentElement.querySelectorAll('.sheet-item').forEach(el=>el.classList.remove('selected'));this.classList.add('selected')">📋 ${escapeHtml(s)}</div>`).join('')}</div>
+      <div class="dialog-btns">
+        <button class="d-cancel">取消（用第一个）</button>
+        <button class="d-confirm">✅ 确认</button>
+      </div></div>`;
+    overlay.querySelector('.d-confirm').onclick=()=>{const s=overlay.querySelector('.sheet-item.selected')?.dataset.sheet||sheetNames[0];overlay.remove();resolve(s);};
+    overlay.querySelector('.d-cancel').onclick=()=>{overlay.remove();resolve(sheetNames[0]);};
+    document.body.appendChild(overlay);
+  });
+}
+function removeTpl(){
+  tplFile=null;tplParsed=null;activeTplSheet='';tplFileBytes=null;
+  document.getElementById('tplBadge').classList.add('hidden');
+  document.getElementById('tplZone').classList.remove('has-file');
+  document.getElementById('tplInput').value='';
+  ['headerSection','mappingSection','previewSection'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+}
+function removeData(){
+  dataFile=null;dataParsed=null;activeDataSheet='';
+  document.getElementById('dataBadge').classList.add('hidden');
+  document.getElementById('dataZone').classList.remove('has-file');
+  document.getElementById('dataInput').value='';
+  ['headerSection','mappingSection','previewSection'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+}
+['tplZone','dataZone'].forEach(id=>{
+  const z=document.getElementById(id);
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('dragover');});
+  z.addEventListener('dragleave',()=>z.classList.remove('dragover'));
+  z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f){if(id==='tplZone')handleTplUpload(f);else handleDataUpload(f);}});
+});
+
+// ==================== INIT ====================
+function tryInitMapping(){
+  if(!tplParsed||!dataParsed)return;
+  dataColRename={};columnMappings={};fuzzyMatchedCols=new Set();
+  renderHeaderSection();renderDataSheetTabs();buildAndRenderMapping();
+  document.getElementById('headerSection').classList.remove('hidden');
+  document.getElementById('mappingSection').classList.remove('hidden');
+  document.getElementById('previewSection').classList.add('hidden');
+}
+function renderHeaderSection(){
+  const tplRows=getActiveRows(tplParsed,activeTplSheet);
+  const dataRows=getActiveRows(dataParsed,activeDataSheet);
+  document.getElementById('headerRowPanel').innerHTML=`
+    <div class="header-row-item"><span>模板文档 表头行</span><input type="number" min="1" max="${tplRows.length||1}" value="${tplHeaderRow}" id="tplHdrInp" oninput="validateHdr('tplHdrInp',${tplRows.length||1})"></div>
+    <div class="header-row-item"><span>数据文档 表头行</span><input type="number" min="1" max="${dataRows.length||1}" value="${dataHeaderRow}" id="dataHdrInp" oninput="validateHdr('dataHdrInp',${dataRows.length||1})"></div>
+    <button class="apply-btn" onclick="applyHeaderRows()">✨ 应用并刷新</button>`;
+}
+function validateHdr(id,max){const v=parseInt(document.getElementById(id).value);document.getElementById(id).classList.toggle('invalid',isNaN(v)||v<1||v>max);}
+function applyHeaderRows(){
+  const tv=parseInt(document.getElementById('tplHdrInp').value);
+  const dv=parseInt(document.getElementById('dataHdrInp').value);
+  const tR=getActiveRows(tplParsed,activeTplSheet);
+  const dR=getActiveRows(dataParsed,activeDataSheet);
+  if(isNaN(tv)||tv<1||tv>tR.length){showToast('❌ 模板文档表头行无效');return;}
+  if(isNaN(dv)||dv<1||dv>dR.length){showToast('❌ 数据文档表头行无效');return;}
+  tplHeaderRow=tv;dataHeaderRow=dv;
+  dataColRename={};columnMappings={};fuzzyMatchedCols=new Set();
+  buildAndRenderMapping();showToast('✅ 表头行已更新');
+}
+function renderDataSheetTabs(){
+  const wrap=document.getElementById('dataSheetTabsWrap');
+  if(!dataParsed||dataParsed.sheetNames.length<=1){wrap.classList.add('hidden');return;}
+  wrap.classList.remove('hidden');
+  document.getElementById('dataSheetTabs').innerHTML=dataParsed.sheetNames.map(sn=>`<div class="sheet-tab${sn===activeDataSheet?' active':''}" onclick="switchDataSheet('${escapeJs(sn)}')" title="${escapeHtml(sn)}">📋 ${escapeHtml(sn.length>14?sn.slice(0,12)+'…':sn)}</div>`).join('');
+}
+function switchDataSheet(sn){
+  activeDataSheet=sn;dataColRename={};columnMappings={};fuzzyMatchedCols=new Set();
+  renderDataSheetTabs();renderHeaderSection();buildAndRenderMapping();showToast('📋 已切换到：'+sn);
+}
+
+// ==================== MAPPING ====================
+function buildAndRenderMapping(){
+  const tH=extractHeaders(getActiveRows(tplParsed,activeTplSheet),tplHeaderRow);
+  const dH=extractHeaders(getActiveRows(dataParsed,activeDataSheet),dataHeaderRow);
+  tH.forEach(h=>{if(!(h in columnMappings))columnMappings[h]=null;});
+  dH.forEach(h=>{if(!(h in dataColRename))dataColRename[h]=h;});
+  renderMappingTable();
+}
+function getDupDataCols(){
+  const used={};
+  Object.values(columnMappings).forEach(v=>{if(v) used[v]=(used[v]||0)+1;});
+  return new Set(Object.entries(used).filter(([,n])=>n>1).map(([k])=>k));
+}
+function renderMappingTable(){
+  const tplRows=getActiveRows(tplParsed,activeTplSheet);
+  const dataRows=getActiveRows(dataParsed,activeDataSheet);
+  const tH=extractHeaders(tplRows,tplHeaderRow);
+  const dH=extractHeaders(dataRows,dataHeaderRow);
+  const dataCols=getDataCols(dataRows,dataHeaderRow);
+  const dups=getDupDataCols();
+  let matched=0,fuzzy=0;
+  tH.forEach(th=>{if(columnMappings[th]){matched++;if(fuzzyMatchedCols.has(th))fuzzy++;}});
+  document.getElementById('matchStats').innerHTML=`
+    <div class="stat-chip">模板列：<span>${tH.length}</span></div>
+    <div class="stat-chip">数据列：<span>${dH.length}</span></div>
+    <div class="stat-chip" style="background:#a2e3c4;color:#1a7a4a">精准匹配：<span>${matched-fuzzy}</span></div>
+    ${fuzzy?`<div class="stat-chip" style="background:#ffe0a0;color:#7a5000">模糊匹配：<span>${fuzzy}</span></div>`:''}
+    <div class="stat-chip" style="background:#fee440;color:#7a5c00">未匹配：<span>${tH.length-matched}</span></div>
+    ${dups.size?`<div class="stat-chip" style="background:#ff9090;color:#8b0000">重复映射：<span>${dups.size}</span></div>`:''}`;
+  document.getElementById('mapTableHead').innerHTML=`<tr><th class="tpl-col" style="min-width:140px">模板列名</th><th style="min-width:220px">映射数据列</th><th style="min-width:160px">数据样本</th><th style="min-width:130px">状态</th></tr>`;
+  let html='';
+  tH.forEach(th=>{
+    const mapped=columnMappings[th];
+    const sampleVal=mapped?getSample(dataRows,dataHeaderRow,dH.indexOf(mapped)):'';
+    const isFuzzy=mapped&&fuzzyMatchedCols.has(th);
+    const isDup=mapped&&dups.has(mapped);
+    let opts=`<option value="">-- 不填充 --</option>`;
+    dataCols.forEach(dc=>{
+      const eff=getEffectiveDataColName(dc.original);
+      const sel=mapped===dc.original?'selected':'';
+      opts+=`<option value="${escapeHtml(dc.original)}" ${sel}>${escapeHtml(eff)}${dc.original!==eff?' (原:'+escapeHtml(dc.original)+')':''}</option>`;
+    });
+    const sc=mapped?(isDup?'dup-error':(isFuzzy?'fuzzy':'matched')):'unmatched';
+    const ss=mapped?(isFuzzy?'fuzzy':'matched'):'unmatched';
+    const st=mapped?(isDup?'⚠️ 重复':(isFuzzy?'🔶 模糊':'✅ 已匹配')):'⚠️ 未匹配';
+    html+=`<tr>
+      <td style="font-weight:700;color:#9b5de5;">${escapeHtml(th)}</td>
+      <td><select class="map-select ${sc}" data-tpl="${escapeHtml(th)}" onchange="onMappingChange(this)">${opts}</select>${isDup?`<span class="dup-warn">⚠️ 此数据列已被其他模板列使用</span>`:''}</td>
+      <td><span class="sample-val" title="${escapeHtml(sampleVal)}">${sampleVal?escapeHtml(sampleVal):'<span style="color:#aaa">—</span>'}</span></td>
+      <td><span class="col-status ${ss}">${st}</span></td></tr>`;
+  });
+  html+=`<tr><td colspan="4" style="background:#9b5de5;color:#fff;font-weight:700;text-align:center;padding:10px;">📝 数据文档列名管理（可重命名，影响匹配）</td></tr>`;
+  dataCols.forEach(dc=>{
+    const renamed=dataColRename[dc.original]??dc.original;
+    const sample=getSample(dataRows,dataHeaderRow,dc.index);
+    const isModified=renamed!==dc.original;
+    html+=`<tr>
+      <td style="font-weight:700;color:#00bbf9;">原列名：${escapeHtml(dc.original||'（空）')}</td>
+      <td><input class="data-rename-input ${isModified?'modified':''}" data-orig="${escapeHtml(dc.original)}" value="${escapeHtml(renamed)}" placeholder="输入新列名…" oninput="onDataColRename(this)"></td>
+      <td><span class="sample-val">${sample?escapeHtml(sample):'<span style="color:#aaa">—</span>'}</span></td>
+      <td><span class="col-status ${isModified?'matched':'unmatched'}">${isModified?'✏️ 已重命名':'📝 原始名'}</span></td></tr>`;
+  });
+  document.getElementById('mapTableBody').innerHTML=html;
+  renderUnmatchedPanel();
+}
+function renderUnmatchedPanel(){
+  const dataRows=getActiveRows(dataParsed,activeDataSheet);
+  const dataCols=getDataCols(dataRows,dataHeaderRow);
+  const mappedSet=new Set(Object.values(columnMappings).filter(Boolean));
+  const unmatched=dataCols.filter(dc=>!mappedSet.has(dc.original));
+  const panel=document.getElementById('unmatchedPanel');
+  if(!unmatched.length){panel.classList.add('hidden');return;}
+  panel.classList.remove('hidden');
+  document.getElementById('unmatchedColsGrid').innerHTML=unmatched.map(dc=>{
+    const eff=getEffectiveDataColName(dc.original);
+    return `<div class="unmatched-col-chip ${dc.hasData?'has-data':'no-data'}">
+      <span>${dc.hasData?'📊':'🈳'}</span>
+      <span>${escapeHtml(eff)}${dc.original!==eff?`<small style="color:#999"> (原:${escapeHtml(dc.original)})</small>`:''}</span>
+      <span style="font-size:.78rem;padding:2px 8px;border-radius:20px;background:${dc.hasData?'#a2e3c4':'#eee'};color:${dc.hasData?'#1a7a4a':'#888'};border:1px solid ${dc.hasData?'#9b5de5':'#ccc'}">${dc.hasData?'有数据':'无数据'}</span>
+    </div>`;
+  }).join('');
+}
+function onMappingChange(sel){
+  columnMappings[sel.dataset.tpl]=sel.value||null;
+  fuzzyMatchedCols.delete(sel.dataset.tpl);
+  renderMappingTable();
+}
+function onDataColRename(inp){
+  dataColRename[inp.dataset.orig]=inp.value.trim()||inp.dataset.orig;
+  renderMappingTable();
+}
+
+// ==================== AUTO MATCH ====================
+function autoMatchColumns(){
+  const tplRows=getActiveRows(tplParsed,activeTplSheet);
+  const dataRows=getActiveRows(dataParsed,activeDataSheet);
+  const tH=extractHeaders(tplRows,tplHeaderRow);
+  const dH=extractHeaders(dataRows,dataHeaderRow);
+  const norm=s=>String(s).toLowerCase().replace(/[\s_\-·•]/g,'');
+  const exactUsed=new Set();
+  let exactCount=0;
+  tH.forEach(th=>{
+    let found=dH.find(dh=>getEffectiveDataColName(dh)===th)||dH.find(dh=>dh===th);
+    if(found){columnMappings[th]=found;fuzzyMatchedCols.delete(th);exactUsed.add(found);exactCount++;}
+    else if(!columnMappings[th]) columnMappings[th]=null;
+  });
+  let fuzzyCount=0;
+  tH.forEach(th=>{
+    if(columnMappings[th]) return;
+    const normTh=norm(th);
+    let bestMatch=null,bestScore=0;
+    dH.forEach(dh=>{
+      if(exactUsed.has(dh)) return;
+      const normDh=norm(getEffectiveDataColName(dh));
+      const score=calcSim(normTh,normDh);
+      if(score>bestScore){bestScore=score;bestMatch=dh;}
+    });
+    if(bestMatch&&bestScore>=0.5){
+      columnMappings[th]=bestMatch;fuzzyMatchedCols.add(th);
+      exactUsed.add(bestMatch);
+      fuzzyCount++;
+    }
+  });
+  renderMappingTable();
+  showToast(`🤖 自动匹配完成：精准 ${exactCount} 列，模糊 ${fuzzyCount} 列`);
+}
+function calcSim(a,b){
+  if(!a||!b)return 0;if(a===b)return 1;
+  const longer=a.length>b.length?a:b,shorter=a.length>b.length?b:a;
+  let common=0;const used=new Set();
+  for(let i=0;i<shorter.length;i++){const idx=longer.indexOf(shorter[i]);if(idx!==-1&&!used.has(idx)){common++;used.add(idx);}}
+  return(2*common)/(a.length+b.length);
+}
+function clearAllMappings(){
+  extractHeaders(getActiveRows(tplParsed,activeTplSheet),tplHeaderRow).forEach(th=>{columnMappings[th]=null;});
+  fuzzyMatchedCols.clear();renderMappingTable();showToast('🧹 已清除所有匹配');
+}
+
+// ==================== FILL ====================
+function doFill(){
+  if(getDupDataCols().size>0){showToast('⚠️ 存在重复映射，请先修正再填充',4000);return;}
+  const tplRows=getActiveRows(tplParsed,activeTplSheet);
+  const dataRows=getActiveRows(dataParsed,activeDataSheet);
+  const tH=extractHeaders(tplRows,tplHeaderRow);
+  const dH=extractHeaders(dataRows,dataHeaderRow);
+  if(!Object.values(columnMappings).some(Boolean)){showToast('⚠️ 没有任何列映射');return;}
+
+  const dataByCol={};
+  tH.forEach(th=>{
+    const dOrig=columnMappings[th];if(!dOrig)return;
+    const dci=dH.indexOf(dOrig);if(dci<0)return;
+    const vals=[];
+    for(let r=dataHeaderRow;r<dataRows.length;r++) vals.push((dataRows[r]||[])[dci]??'');
+    dataByCol[th]=vals;
+  });
+  const dataRowCount=Math.max(0,...Object.values(dataByCol).map(v=>v.length));
+
+  const nonBlankRowsForPreview=[];
+  for(let r=0;r<dataRowCount;r++){
+    let isBlank=true;
+    const rowVals={};
+    tH.forEach(th=>{
+      const v=dataByCol[th]?String(dataByCol[th][r]??''):'';
+      rowVals[th]=v;
+      if(v.trim()!=='') isBlank=false;
+    });
+    if(!isBlank) nonBlankRowsForPreview.push(rowVals);
+  }
+
+  const ext=(tplFile.name.match(/\.[^.]+$/)?.[0]||'.xlsx').toLowerCase();
+
+  if(ext==='.csv'){
+    _doFillCsv(tH,dataByCol,dataRowCount,nonBlankRowsForPreview);
+    return;
+  }
+
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const origBytes=new Uint8Array(e.target.result);
+      const wbMeta=XLSX.read(origBytes,{type:'array',bookSheets:true});
+      const sheetIdx=wbMeta.SheetNames.indexOf(activeTplSheet);
+      if(sheetIdx<0){showToast('❌ 无法定位模板 Sheet');return;}
+
+      const wbFull=XLSX.read(origBytes,{type:'array',cellDates:true,cellStyles:true,cellNF:true,raw:false});
+      const wsFull=wbFull.Sheets[activeTplSheet];
+      if(!wsFull){showToast('❌ 无法读取模板 Sheet');return;}
+
+      const wsRange=XLSX.utils.decode_range(wsFull['!ref']||'A1');
+      const headerSheetRow=wsRange.s.r+tplHeaderRow-1;
+      const firstDataSheetRow=headerSheetRow+1;
+
+      const colToSheetCol={};
+      for(let c=wsRange.s.c;c<=wsRange.e.c;c++){
+        const cell=wsFull[XLSX.utils.encode_cell({r:headerSheetRow,c})];
+        const v=cell?String(cell.w!==undefined?cell.w:(cell.v??'')).trim():'';
+        if(v) colToSheetCol[v]=c;
+      }
+
+      const nonBlankRows=[];
+      for(let r=0;r<dataRowCount;r++){
+        let isBlank=true;
+        const rowVals={};
+        tH.forEach(th=>{
+          const v=dataByCol[th]?String(dataByCol[th][r]??''):'';
+          rowVals[th]=v;
+          if(v.trim()!=='') isBlank=false;
+        });
+        if(!isBlank) nonBlankRows.push(rowVals);
+      }
+      const actualRowCount=nonBlankRows.length;
+
+      function colLetter(ci){
+        let s='';let n=ci+1;
+        while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26);}
+        return s;
+      }
+      function xmlEsc(s){
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+      }
+
+      let newRowsXml='';
+      let filledCells=0;
+      nonBlankRows.forEach((rowVals,ri)=>{
+        const sheetRowNum=firstDataSheetRow+ri+1;
+        let cellsXml='';
+        const colEntries=Object.entries(colToSheetCol).sort((a,b)=>a[1]-b[1]);
+        colEntries.forEach(([th,ci])=>{
+          const val=rowVals[th]??'';
+          const strVal=String(val);
+          if(strVal.trim()==='') return;
+          const addr=colLetter(ci)+sheetRowNum;
+          const numVal=parseFloat(strVal);
+          const isNum=!isNaN(numVal)&&strVal.trim()!=='';
+          if(isNum){
+            cellsXml+=`<c r="${addr}"><v>${numVal}</v></c>`;
+          } else {
+            cellsXml+=`<c r="${addr}" t="inlineStr"><is><t>${xmlEsc(strVal)}</t></is></c>`;
+          }
+          filledCells++;
+        });
+        if(cellsXml) newRowsXml+=`<row r="${sheetRowNum}">${cellsXml}</row>`;
+      });
+
+      _patchXlsxZip(origBytes, sheetIdx, headerSheetRow, firstDataSheetRow, newRowsXml, actualRowCount, wsRange)
+        .then(patchedBytes=>{
+          filledWorkbook={__patchedBytes:patchedBytes,__ext:ext};
+          let totalFilled=filledCells;
+          initPreview(tH,dataByCol,dataRowCount,totalFilled,Object.values(columnMappings).filter(Boolean).length);
+          document.getElementById('previewSection').classList.remove('hidden');
+          document.getElementById('previewSection').scrollIntoView({behavior:'smooth'});
+          showToast(`✅ 填充完成！${totalFilled} 个单元格，${actualRowCount} 行有效数据`);
+        })
+        .catch(err=>{
+          console.warn('ZIP patch failed, falling back to XLSX.js write:',err);
+          _doFillXlsxFallback(origBytes,wbFull,wsFull,wsRange,headerSheetRow,firstDataSheetRow,
+            colToSheetCol,nonBlankRows,actualRowCount,tH,dataByCol,dataRowCount,filledCells);
+        });
+    }catch(err){showToast('❌ 填充失败：'+err.message,5000);console.error(err);}
+  };
+  reader.readAsArrayBuffer(tplFile);
+}
+
+function _extractRowsUpTo(sheetDataXml, maxSheetRow){
+  let result='';
+  const rowRegex=/<row\b([^>]*)>([\s\S]*?)<\/row>/g;
+  let m;
+  while((m=rowRegex.exec(sheetDataXml))!==null){
+    const attrs=m[1];
+    const rMatch=attrs.match(/\br="(\d+)"/);
+    if(rMatch&&parseInt(rMatch[1])<=maxSheetRow){
+      result+=m[0];
+    }
+  }
+  return result;
+}
+
+async function _zipReadAsync(data){
+  const view=new DataView(data.buffer,data.byteOffset,data.byteLength);
+  const fileEntries=[];
+  let i=0;
+  const len=data.length;
+  while(i<len-4){
+    const sig=view.getUint32(i,true);
+    if(sig===0x04034B50){
+      const gpFlag=view.getUint16(i+6,true);
+      const compMethod=view.getUint16(i+8,true);
+      const lastModTime=view.getUint16(i+10,true);
+      const lastModDate=view.getUint16(i+12,true);
+      const crc32=view.getUint32(i+14,true);
+      let compSize=view.getUint32(i+18,true);
+      let uncompSize=view.getUint32(i+22,true);
+      const fnLen=view.getUint16(i+26,true);
+      const extraLen=view.getUint16(i+28,true);
+      const fnBytes=data.slice(i+30,i+30+fnLen);
+      const fileName=new TextDecoder('utf-8').decode(fnBytes);
+      const extraBytes=data.slice(i+30+fnLen,i+30+fnLen+extraLen);
+      const dataStart=i+30+fnLen+extraLen;
+      const compData=data.slice(dataStart,dataStart+compSize);
+      fileEntries.push({fileName,compMethod,compData,uncompSize,crc32,
+        localHeaderOffset:i,fnBytes,extraBytes,lastModTime,lastModDate,gpFlag});
+      i=dataStart+compSize;
+      if((gpFlag&0x08)&&view.getUint32(i,true)===0x08074B50) i+=16;
+    } else { i++; }
+  }
+
+  const files={};
+  for(const entry of fileEntries){
+    if(entry.compMethod===0){
+      files[entry.fileName]={data:entry.compData,entry};
+    } else if(entry.compMethod===8 && typeof DecompressionStream!=='undefined'){
+      try{
+        const ds=new DecompressionStream('deflate-raw');
+        const writer=ds.writable.getWriter();
+        const reader=ds.readable.getReader();
+        writer.write(entry.compData);
+        writer.close();
+        const chunks=[];
+        while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}
+        const total=chunks.reduce((s,c)=>s+c.length,0);
+        const out=new Uint8Array(total);
+        let off=0;chunks.forEach(c=>{out.set(c,off);off+=c.length;});
+        files[entry.fileName]={data:out,entry};
+      }catch(e){files[entry.fileName]={data:entry.compData,entry};}
+    } else {
+      files[entry.fileName]={data:entry.compData,entry};
+    }
+  }
+  return {files,fileEntries};
+}
+
+async function _zipWriteAsync(files, fileEntries, modifiedNames){
+  const parts=[];
+  const centralDir=[];
+  let offset=0;
+
+  for(const entry of fileEntries){
+    const name=entry.fileName;
+    const isModified=modifiedNames.has(name);
+    let compData,compMethod,crc32,uncompSize;
+
+    if(isModified&&files[name]){
+      const rawData=files[name].data;
+      uncompSize=rawData.length;
+      if(typeof CompressionStream!=='undefined'){
+        try{
+          const cs=new CompressionStream('deflate-raw');
+          const writer=cs.writable.getWriter();
+          const reader=cs.readable.getReader();
+          writer.write(rawData);writer.close();
+          const chunks=[];
+          while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}
+          const total=chunks.reduce((s,c)=>s+c.length,0);
+          compData=new Uint8Array(total);
+          let off=0;chunks.forEach(c=>{compData.set(c,off);off+=c.length;});
+          compMethod=8;
+        }catch(e){compData=rawData;compMethod=0;}
+      } else {
+        compData=rawData;compMethod=0;
+      }
+      crc32=_crc32(rawData);
+    } else {
+      compData=entry.compData;
+      compMethod=entry.compMethod;
+      crc32=entry.crc32;
+      uncompSize=entry.uncompSize;
+    }
+
+    const fnBytes=entry.fnBytes;
+    const extraBytes=new Uint8Array(0);
+
+    const lh=new Uint8Array(30+fnBytes.length+extraBytes.length);
+    const lv=new DataView(lh.buffer);
+    lv.setUint32(0,0x04034B50,true);
+    lv.setUint16(4,20,true);
+    lv.setUint16(6,0,true);
+    lv.setUint16(8,compMethod,true);
+    lv.setUint16(10,entry.lastModTime,true);
+    lv.setUint16(12,entry.lastModDate,true);
+    lv.setUint32(14,crc32>>>0,true);
+    lv.setUint32(18,compData.length,true);
+    lv.setUint32(22,uncompSize,true);
+    lv.setUint16(26,fnBytes.length,true);
+    lv.setUint16(28,0,true);
+    lh.set(fnBytes,30);
+
+    parts.push(lh);
+    parts.push(compData);
+
+    const cd=new Uint8Array(46+fnBytes.length);
+    const cv=new DataView(cd.buffer);
+    cv.setUint32(0,0x02014B50,true);
+    cv.setUint16(4,20,true);
+    cv.setUint16(6,20,true);
+    cv.setUint16(8,0,true);
+    cv.setUint16(10,compMethod,true);
+    cv.setUint16(12,entry.lastModTime,true);
+    cv.setUint16(14,entry.lastModDate,true);
+    cv.setUint32(16,crc32>>>0,true);
+    cv.setUint32(20,compData.length,true);
+    cv.setUint32(24,uncompSize,true);
+    cv.setUint16(28,fnBytes.length,true);
+    cv.setUint16(30,0,true);
+    cv.setUint16(32,0,true);
+    cv.setUint16(34,0,true);
+    cv.setUint16(36,0,true);
+    cv.setUint32(38,0,true);
+    cv.setUint32(42,offset,true);
+    cd.set(fnBytes,46);
+    centralDir.push(cd);
+
+    offset+=lh.length+compData.length;
+  }
+
+  const cdSize=centralDir.reduce((s,c)=>s+c.length,0);
+  const eocd=new Uint8Array(22);
+  const ev=new DataView(eocd.buffer);
+  ev.setUint32(0,0x06054B50,true);
+  ev.setUint16(4,0,true);ev.setUint16(6,0,true);
+  ev.setUint16(8,fileEntries.length,true);
+  ev.setUint16(10,fileEntries.length,true);
+  ev.setUint32(12,cdSize,true);
+  ev.setUint32(16,offset,true);
+  ev.setUint16(20,0,true);
+
+  const allParts=[...parts,...centralDir,eocd];
+  const total=allParts.reduce((s,p)=>s+p.length,0);
+  const out=new Uint8Array(total);
+  let pos=0;allParts.forEach(p=>{out.set(p,pos);pos+=p.length;});
+  return out;
+}
+
+const _crcTable=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[i]=c;}return t;})();
+function _crc32(data){let c=0xFFFFFFFF;for(let i=0;i<data.length;i++)c=_crcTable[(c^data[i])&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0;}
+
+async function _patchXlsxZip(origBytes, sheetIdx, headerSheetRow, firstDataSheetRow, newRowsXml, actualRowCount, wsRange){
+  const {files,fileEntries}=await _zipReadAsync(origBytes);
+
+  let sheetPath=`xl/worksheets/sheet${sheetIdx+1}.xml`;
+  const wbRelsEntry=files['xl/_rels/workbook.xml.rels'];
+  const wbEntry=files['xl/workbook.xml'];
+  if(wbRelsEntry&&wbEntry){
+    const relsXml=new TextDecoder().decode(wbRelsEntry.data);
+    const wbXml=new TextDecoder().decode(wbEntry.data);
+    const sheetMatches=[...wbXml.matchAll(/<sheet\b[^>]+r:id="([^"]+)"/g)];
+    const rId=sheetMatches[sheetIdx]?.[1];
+    if(rId){
+      const relMatch=relsXml.match(new RegExp(`Id="${rId}"[^>]*Target="([^"]+)"`));
+      if(relMatch){
+        let t=relMatch[1].replace(/^\//,'');
+        if(!t.startsWith('xl/')) t='xl/'+t;
+        sheetPath=t;
+      }
+    }
+  }
+
+  const sheetEntry=files[sheetPath];
+  if(!sheetEntry) throw new Error(`Sheet not found: ${sheetPath}`);
+
+  let sheetXml=new TextDecoder('utf-8').decode(sheetEntry.data);
+
+  sheetXml=sheetXml.replace(/(<dimension\s+ref=")([^"]+)(")/,(full,a,ref,b)=>{
+    const parts=ref.split(':');
+    const startRef=parts[0]||'A1';
+    const newEndRow=firstDataSheetRow+Math.max(actualRowCount,1);
+    const endColMatch=(parts[1]||startRef).match(/^([A-Za-z]+)/);
+    const endCol=endColMatch?endColMatch[1]:'A';
+    return `${a}${startRef}:${endCol}${newEndRow}${b}`;
+  });
+
+  const sdOpen=sheetXml.indexOf('<sheetData');
+  const sdClose=sheetXml.indexOf('</sheetData>');
+  if(sdOpen===-1||sdClose===-1) throw new Error('No <sheetData> found');
+
+  const before=sheetXml.slice(0,sdOpen);
+  const after=sheetXml.slice(sdClose+'</sheetData>'.length);
+  const origSheetData=sheetXml.slice(sdOpen,sdClose+'</sheetData>'.length);
+
+  const keepRows=_extractRowsUpTo(origSheetData,firstDataSheetRow);
+  const patched=`${before}<sheetData>${keepRows}${newRowsXml}</sheetData>${after}`;
+
+  files[sheetPath]={data:new TextEncoder().encode(patched),entry:sheetEntry.entry};
+
+  return _zipWriteAsync(files,fileEntries,new Set([sheetPath]));
+}
+
+function _doFillXlsxFallback(origBytes,wb,ws,wsRange,headerSheetRow,firstDataSheetRow,colToSheetCol,nonBlankRows,actualRowCount,tH,dataByCol,dataRowCount,filledCells){
+  for(let r=firstDataSheetRow;r<=wsRange.e.r;r++)
+    for(let c=wsRange.s.c;c<=wsRange.e.c;c++){const a=XLSX.utils.encode_cell({r,c});if(ws[a])delete ws[a];}
+  if(ws['!merges']) ws['!merges']=ws['!merges'].filter(m=>m.s.r<=headerSheetRow);
+  nonBlankRows.forEach((rv,ri)=>{
+    tH.forEach(th=>{
+      const val=rv[th];const sc=colToSheetCol[th];if(sc===undefined||!val||String(val).trim()==='')return;
+      const addr=XLSX.utils.encode_cell({r:firstDataSheetRow+ri,c:sc});
+      const s=String(val);const n=parseFloat(s);
+      ws[addr]=!isNaN(n)&&s.trim()!==''?{t:'n',v:n,w:s}:{t:'s',v:s,w:s};
+    });
+  });
+  wsRange.e.r=actualRowCount>0?firstDataSheetRow+actualRowCount-1:headerSheetRow;
+  ws['!ref']=XLSX.utils.encode_range(wsRange);
+  filledWorkbook={__xlsxWb:wb,__ext:'.xlsx'};
+  initPreview(tH,dataByCol,dataRowCount,filledCells,Object.values(columnMappings).filter(Boolean).length);
+  document.getElementById('previewSection').classList.remove('hidden');
+  document.getElementById('previewSection').scrollIntoView({behavior:'smooth'});
+  showToast(`✅ 填充完成（兼容模式）！${filledCells} 个单元格，${actualRowCount} 行数据`);
+}
+
+function _doFillCsv(tH,dataByCol,dataRowCount,nonBlankRows){
+  const escCsv=v=>{const s=String(v??'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s;};
+  let csv=tH.map(escCsv).join(',')+'\n';
+  nonBlankRows.forEach(row=>{csv+=tH.map(h=>escCsv(row[h]??'')).join(',')+'\n';});
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  filledWorkbook={__blob:blob,__ext:'.csv'};
+  initPreview(tH,dataByCol,dataRowCount,nonBlankRows.length*tH.length,Object.values(columnMappings).filter(Boolean).length);
+  document.getElementById('previewSection').classList.remove('hidden');
+  document.getElementById('previewSection').scrollIntoView({behavior:'smooth'});
+  showToast(`✅ CSV填充完成！${nonBlankRows.length} 行数据`);
+}
+
+// ==================== DOWNLOAD ====================
+function downloadResult(){
+  if(!filledWorkbook){showToast('⚠️ 请先执行填充');return;}
+  const origName=tplFile?.name||'template.xlsx';
+  const ext=(origName.match(/\.[^.]+$/)?.[0]||'.xlsx').toLowerCase();
+  const base=origName.replace(/\.[^.]+$/,'');
+  const fname=`${base}_已填充_${new Date().toISOString().slice(0,10)}${ext}`;
+
+  if(filledWorkbook.__patchedBytes){
+    const blob=new Blob([filledWorkbook.__patchedBytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    _downloadBlob(blob,fname);
+  } else if(filledWorkbook.__blob){
+    _downloadBlob(filledWorkbook.__blob,fname);
+  } else if(filledWorkbook.__xlsxWb){
+    const bookType=ext==='.xls'?'xls':'xlsx';
+    XLSX.writeFile(filledWorkbook.__xlsxWb,fname,{bookType,cellStyles:true});
+  }
+  showToast('⬇️ 文件已下载：'+fname);
+}
+function _downloadBlob(blob,fname){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=fname;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+}
+
+// ==================== PREVIEW ====================
+function initPreview(tH,dataByCol,dataRowCount,filledCells,mappedCount){
+  pvHeaders=tH;pvDataByCol=dataByCol;pvAllRows=[];
+  pvActiveFilters={};pvGlobalSearch='';pvSortCol=null;pvSortDir=1;pvCurrentPage=1;
+  pvOpenFilterDropdown=null;
+  for(let r=0;r<dataRowCount;r++){
+    const row={};
+    let isBlank=true;
+    tH.forEach(h=>{
+      const v=dataByCol[h]?String(dataByCol[h][r]??''):'';
+      row[h]=v;
+      if(v.trim()!=='') isBlank=false;
+    });
+    if(!isBlank) pvAllRows.push(row);
+  }
+  const actualRows=pvAllRows.length;
+  document.getElementById('fillAlert').innerHTML=`<div class="alert alert-info">✅ 已填充 <strong>${filledCells}</strong> 个单元格，共 <strong>${actualRows}</strong> 行有效数据，匹配 <strong>${mappedCount}</strong> 列。${dataRowCount!==actualRows?`<span style="color:#ff6b9d;margin-left:8px;">（已过滤 ${dataRowCount-actualRows} 个全空行）</span>`:''}
+  </div>`;
+  document.getElementById('previewStats').innerHTML=`
+    <div class="stat-chip">有效行：<span>${actualRows}</span></div>
+    <div class="stat-chip" style="background:#a2e3c4;color:#1a7a4a">填充单元格：<span>${filledCells}</span></div>
+    <div class="stat-chip">匹配列：<span>${mappedCount}</span></div>`;
+  renderPreviewAll();
+}
+
+function getFilteredRows(){
+  let rows=[...pvAllRows];
+  const activeCols=Object.keys(pvActiveFilters).filter(col=>{
+    const d=pvActiveFilters[col];
+    return d.mode==='empty'||d.mode==='notempty'||(d.mode==='contains'&&d.text.trim()!=='');
+  });
+  if(activeCols.length){
+    rows=rows.filter(row=>activeCols.every(col=>{
+      const d=pvActiveFilters[col];
+      const val=String(row[col]??'');
+      if(d.mode==='empty') return val.trim()==='';
+      if(d.mode==='notempty') return val.trim()!=='';
+      return val.toLowerCase().includes(d.text.toLowerCase().trim());
+    }));
+  }
+  if(pvGlobalSearch.trim()){
+    const term=pvGlobalSearch.toLowerCase().trim();
+    rows=rows.filter(row=>pvHeaders.some(h=>String(row[h]??'').toLowerCase().includes(term)));
+  }
+  if(pvSortCol){
+    rows=[...rows].sort((a,b)=>{
+      const va=a[pvSortCol]??'',vb=b[pvSortCol]??'';
+      const na=parseFloat(va),nb=parseFloat(vb);
+      if(!isNaN(na)&&!isNaN(nb)) return(na-nb)*pvSortDir;
+      return String(va).localeCompare(String(vb),'zh-CN')*pvSortDir;
+    });
+  }
+  return rows;
+}
+
+function renderPreviewAll(){
+  renderPreviewHead();
+  renderPreviewBody();
+  renderPvPagination();
+  renderFilterStatus();
+}
+
+function renderPreviewHead(){
+  const totalRows=pvAllRows.length;
+  const digits=String(totalRows).length;
+  const rnWidth=Math.max(48, digits*12+24);
+  let styleEl=document.getElementById('pvFrozenStyle');
+  if(!styleEl){styleEl=document.createElement('style');styleEl.id='pvFrozenStyle';document.head.appendChild(styleEl);}
+  styleEl.textContent=`.preview-tbl th.frozen-col,.preview-tbl td.frozen-col{min-width:${rnWidth}px!important;width:${rnWidth}px!important;}`;
+
+  const filterRow=pvHeaders.map(h=>`<th>${buildFilterCell(h)}</th>`).join('');
+  const sortRow=pvHeaders.map(h=>{
+    const isSorted=pvSortCol===h;
+    const icon=isSorted?(pvSortDir===1?'▲':'▼'):'⇅';
+    return `<th onclick="onSortCol('${escapeJs(h)}')" title="点击排序">${escapeHtml(h)}<span class="sort-icon">${icon}</span></th>`;
+  }).join('');
+  document.getElementById('pvHead').innerHTML=`
+    <tr><th class="frozen-col">#</th>${sortRow}</tr>
+    <tr class="filter-row"><th class="frozen-col">筛选</th>${filterRow}</tr>`;
+}
+
+function buildFilterCell(col){
+  const d=pvActiveFilters[col]||{text:'',mode:'contains'};
+  const hasMode=(d.mode==='empty'||d.mode==='notempty');
+  const hasText=(d.mode==='contains'&&d.text.trim()!=='');
+  const inputActive=hasText?'active':'';
+  const modeActive=hasMode?'has-mode':'';
+  const modeLabel=d.mode==='empty'?'空':d.mode==='notempty'?'非空':'▾';
+  const safeCol=escapeHtml(col);
+  let dropHtml='';
+  if(pvOpenFilterDropdown===col){
+    dropHtml=`<div class="filter-dropdown" onclick="event.stopPropagation()">
+      <div class="filter-dropdown-item${d.mode==='empty'?' selected':''}" onclick="setFilterMode('${escapeJs(col)}','empty')">🈳 为空</div>
+      <div class="filter-dropdown-item${d.mode==='notempty'?' selected':''}" onclick="setFilterMode('${escapeJs(col)}','notempty')">✅ 不为空</div>
+      ${(hasMode||hasText)?`<div class="filter-dropdown-item" onclick="clearSingleFilter('${escapeJs(col)}')" style="color:#dc3545">🗑️ 清除筛选</div>`:''}
+    </div>`;
+  }
+  return `<div class="filter-cell" style="position:relative;">
+    <input class="filter-input ${inputActive}" data-col="${safeCol}" value="${escapeHtml(d.text)}"
+      placeholder="搜索…" oninput="onFilterInput(this)" ${hasMode?'disabled':''}>
+    <button class="filter-mode-btn ${modeActive}" onclick="toggleFilterDropdown(event,'${escapeJs(col)}')">${modeLabel}</button>
+    ${dropHtml}
+  </div>`;
+}
+
+function renderPreviewBody(){
+  const filtered=getFilteredRows();
+  const total=filtered.length;
+  const totalPages=Math.max(1,Math.ceil(total/pvPageSize));
+  if(pvCurrentPage>totalPages) pvCurrentPage=totalPages;
+  const start=(pvCurrentPage-1)*pvPageSize;
+  const pageRows=filtered.slice(start,start+pvPageSize);
+  document.getElementById('pvRowCount').textContent=`共 ${total} 行${(Object.keys(pvActiveFilters).length||pvGlobalSearch)?'（筛选中）':''}`;
+
+  const highlights={};
+  Object.keys(pvActiveFilters).forEach(col=>{
+    const d=pvActiveFilters[col];
+    if(d.mode==='contains'&&d.text.trim()) highlights[col]=d.text.trim();
+  });
+  if(pvGlobalSearch.trim()) pvHeaders.forEach(h=>{if(!highlights[h]) highlights[h]=pvGlobalSearch.trim();});
+
+  function renderCell(val,col){
+    const str=String(val??'');
+    const kw=highlights[col];
+    let content;
+    if(kw&&str){
+      const escaped=kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const regex=new RegExp(`(${escaped})`, 'gi');
+      content=str.split(regex).map((part,i)=>i%2===1?`<span class="highlight-match">${escapeHtml(part)}</span>`:escapeHtml(part)).join('');
+    }else{content=escapeHtml(str);}
+    const isTrunc=str.length>50;
+    return `<td${isTrunc?` title="${escapeHtml(str)}"`:''} class="${pvDataByCol[col]?'filled':''}">${content}</td>`;
+  }
+
+  let tbody='';
+  if(!pageRows.length){
+    tbody=`<tr><td class="frozen-col" style="text-align:center;">-</td><td colspan="${pvHeaders.length}" style="text-align:center;padding:30px;color:#999;font-weight:600;">没有匹配的数据</td></tr>`;
+  }else{
+    pageRows.forEach((row,i)=>{
+      tbody+=`<tr><td class="frozen-col">${start+i+1}</td>${pvHeaders.map(h=>renderCell(row[h],h)).join('')}</tr>`;
+    });
+  }
+  document.getElementById('pvBody').innerHTML=tbody;
+}
+
+// ==================== PAGINATION (optimized) ====================
+function renderPvPagination(){
+  const filtered=getFilteredRows();
+  const total=filtered.length;
+  const totalPages=Math.max(1,Math.ceil(total/pvPageSize));
+  const start=(pvCurrentPage-1)*pvPageSize+1;
+  const end=Math.min(pvCurrentPage*pvPageSize,total);
+
+  // Build page number slots using same algorithm as merge tool
+  let pages=[];
+  const maxVisible=7;
+  if(totalPages<=maxVisible){
+    for(let i=1;i<=totalPages;i++) pages.push(i);
+  } else {
+    pages.push(1);
+    let lo=Math.max(2,pvCurrentPage-1);
+    let hi=Math.min(totalPages-1,pvCurrentPage+1);
+    if(pvCurrentPage<=3){lo=2;hi=4;}
+    if(pvCurrentPage>=totalPages-2){lo=totalPages-3;hi=totalPages-1;}
+    if(lo>2) pages.push('...');
+    for(let i=lo;i<=hi;i++) pages.push(i);
+    if(hi<totalPages-1) pages.push('...');
+    pages.push(totalPages);
+  }
+
+  // Page number buttons
+  let pageBtns='';
+  pages.forEach(p=>{
+    if(p==='...'){
+      pageBtns+=`<span class="page-ellipsis">…</span>`;
+    } else {
+      pageBtns+=`<button class="page-btn${p===pvCurrentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+    }
+  });
+
+  // Page size options
+  const sizeOptions=PV_PAGE_SIZES.map(s=>`<option value="${s}"${s===pvPageSize?' selected':''}>${s} 条/页</option>`).join('');
+
+  document.getElementById('pvPagination').innerHTML=`<div class="pagination-bar">
+    <div class="pagination-info">
+      共 <strong>${total.toLocaleString()}</strong> 条数据，
+      第 <strong>${total>0?start.toLocaleString():0}</strong>–<strong>${end.toLocaleString()}</strong> 条
+    </div>
+    <div class="pagination-controls">
+      <button class="page-btn" onclick="goPage(1)" title="首页" ${pvCurrentPage<=1?'disabled':''}>«</button>
+      <button class="page-btn" onclick="goPage(${pvCurrentPage-1})" title="上一页" ${pvCurrentPage<=1?'disabled':''}>‹</button>
+      ${pageBtns}
+      <button class="page-btn" onclick="goPage(${pvCurrentPage+1})" title="下一页" ${pvCurrentPage>=totalPages?'disabled':''}>›</button>
+      <button class="page-btn" onclick="goPage(${totalPages})" title="末页" ${pvCurrentPage>=totalPages?'disabled':''}>»</button>
+    </div>
+    <div class="page-size-wrapper">
+      <span class="page-size-label">每页显示</span>
+      <select class="page-size-select" onchange="onPageSizeChange(this.value)">${sizeOptions}</select>
+    </div>
+  </div>`;
+}
+
+function goPage(p){
+  const total=getFilteredRows().length;
+  p=Math.max(1,Math.min(p,Math.max(1,Math.ceil(total/pvPageSize))));
+  pvCurrentPage=p;
+  renderPreviewBody();
+  renderPvPagination();
+  document.getElementById('pvWrap').scrollTop=0;
+}
+
+function onPageSizeChange(newSize){
+  pvPageSize=parseInt(newSize)||50;
+  pvCurrentPage=1;
+  renderPreviewBody();
+  renderPvPagination();
+}
+
+function renderFilterStatus(){
+  const el=document.getElementById('pvFilterStatus');
+  const fc=Object.keys(pvActiveFilters).filter(col=>{
+    const d=pvActiveFilters[col];return d.mode==='empty'||d.mode==='notempty'||(d.mode==='contains'&&d.text.trim()!=='');
+  }).length;
+  const gs=pvGlobalSearch.trim()!=='';
+  if(!fc&&!gs){el.innerHTML='';return;}
+  const filtered=getFilteredRows();
+  let msg=`🔍 `;
+  if(gs) msg+=`全局搜索"${escapeHtml(pvGlobalSearch)}" `;
+  if(fc) msg+=`+ ${fc} 个列筛选`;
+  msg+=` · 显示 ${filtered.length} / ${pvAllRows.length} 行`;
+  el.innerHTML=`<div class="filter-status">${msg}<button class="clear-filters-btn" onclick="clearAllFilters()">清除全部</button></div>`;
+}
+
+// filter event handlers
+function onFilterInput(inp){
+  const col=inp.dataset.col;
+  pvActiveFilters[col]={text:inp.value,mode:'contains'};
+  pvCurrentPage=1;renderPreviewBody();renderPvPagination();renderFilterStatus();
+}
+function toggleFilterDropdown(e,col){
+  e.stopPropagation();
+  pvOpenFilterDropdown=pvOpenFilterDropdown===col?null:col;
+  renderPreviewHead();renderPreviewBody();renderPvPagination();renderFilterStatus();
+}
+function setFilterMode(col,mode){
+  const prev=pvActiveFilters[col]||{text:'',mode:'contains'};
+  if(prev.mode===mode) pvActiveFilters[col]={text:'',mode:'contains'};
+  else pvActiveFilters[col]={text:prev.text||'',mode};
+  pvOpenFilterDropdown=null;pvCurrentPage=1;
+  renderPreviewHead();renderPreviewBody();renderPvPagination();renderFilterStatus();
+}
+function clearSingleFilter(col){
+  delete pvActiveFilters[col];pvOpenFilterDropdown=null;pvCurrentPage=1;
+  renderPreviewHead();renderPreviewBody();renderPvPagination();renderFilterStatus();
+}
+function clearAllFilters(){
+  pvActiveFilters={};pvGlobalSearch='';pvOpenFilterDropdown=null;pvCurrentPage=1;
+  document.getElementById('pvSearch').value='';
+  renderPreviewHead();renderPreviewBody();renderPvPagination();renderFilterStatus();
+}
+function onGlobalSearch(){
+  pvGlobalSearch=document.getElementById('pvSearch').value;
+  pvCurrentPage=1;renderPreviewBody();renderPvPagination();renderFilterStatus();
+}
+function onSortCol(col){
+  if(pvSortCol===col) pvSortDir*=-1;
+  else{pvSortCol=col;pvSortDir=1;}
+  renderPreviewHead();renderPreviewBody();renderPvPagination();
+}
+
+// close dropdowns on outside click
+document.addEventListener('click',e=>{
+  if(pvOpenFilterDropdown!==null&&!e.target.closest('.filter-mode-btn')&&!e.target.closest('.filter-dropdown')){
+    pvOpenFilterDropdown=null;renderPreviewHead();
+  }
+});
+
+// ==================== RESET ====================
+function resetAll(){
+  tplFile=null;dataFile=null;tplParsed=null;dataParsed=null;
+  activeTplSheet='';activeDataSheet='';tplHeaderRow=1;dataHeaderRow=1;
+  columnMappings={};dataColRename={};fuzzyMatchedCols=new Set();
+  filledWorkbook=null;tplFileBytes=null;
+  pvAllRows=[];pvHeaders=[];pvDataByCol={};
+  ['tplBadge','dataBadge'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['tplZone','dataZone'].forEach(id=>document.getElementById(id).classList.remove('has-file'));
+  document.getElementById('tplInput').value='';document.getElementById('dataInput').value='';
+  ['headerSection','mappingSection','previewSection'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  showToast('🔄 已重置');
+}
+</script>
+</body>
+</html>
