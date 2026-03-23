@@ -808,10 +808,20 @@ function doFill(){
           const strVal=String(val);
           if(strVal.trim()==='') return;
           const addr=colLetter(ci)+sheetRowNum;
+          // 判断是否应强制作为文本处理：
+          // 1. 以0开头的纯数字（如工号、邮编、账号）
+          // 2. 超过15位的纯数字（超出IEEE 754双精度精度，如银行账号、身份证）
+          // 3. 纯数字但含有前导/尾随空格（保留原始格式）
+          const pureDigits=/^\d+$/.test(strVal.trim());
+          const forceText=pureDigits&&(strVal.trim().length>15||strVal.trim()[0]==='0');
           const numVal=parseFloat(strVal);
-          const isNum=!isNaN(numVal)&&strVal.trim()!=='';
+          const isNum=!forceText&&!isNaN(numVal)&&strVal.trim()!=='';
           if(isNum){
             cellsXml+=`<c r="${addr}"><v>${numVal}</v></c>`;
+          } else if(forceText){
+            // 文本格式数字：加 s="TEXT_STYLE_IDX" 属性，_patchXlsxZip 会替换为实际 xf index
+            // t="str" 表示公式字符串，配合文本格式 xf 确保 Excel 不自动转换
+            cellsXml+=`<c r="${addr}" t="str" s="TEXT_STYLE_IDX"><v>${xmlEsc(strVal)}</v></c>`;
           } else {
             cellsXml+=`<c r="${addr}" t="inlineStr"><is><t>${xmlEsc(strVal)}</t></is></c>`;
           }
@@ -1014,6 +1024,48 @@ function _crc32(data){let c=0xFFFFFFFF;for(let i=0;i<data.length;i++)c=_crcTable
 async function _patchXlsxZip(origBytes, sheetIdx, headerSheetRow, firstDataSheetRow, newRowsXml, actualRowCount, wsRange){
   const {files,fileEntries}=await _zipReadAsync(origBytes);
 
+  // ── 注入文本格式到 styles.xml，获取文本格式的 xf index ──────────────────
+  let textXfIdx=null;
+  const stylesEntry=files['xl/styles.xml'];
+  if(stylesEntry){
+    try{
+      let stylesXml=new TextDecoder('utf-8').decode(stylesEntry.data);
+      const TEXT_NUMFMT_ID=49;
+      // 确保 numFmt id=49 (@) 存在
+      if(!stylesXml.includes(`numFmtId="${TEXT_NUMFMT_ID}"`)){
+        if(/<numFmts/.test(stylesXml)){
+          stylesXml=stylesXml.replace('</numFmts>',`<numFmt numFmtId="${TEXT_NUMFMT_ID}" formatCode="@"/></numFmts>`);
+          stylesXml=stylesXml.replace(/(<numFmts[^>]*\scount=")(\d+)(")/,(m,a,n,b)=>`${a}${parseInt(n)+1}${b}`);
+        } else {
+          const insertAfter=stylesXml.indexOf('>',stylesXml.indexOf('<styleSheet'))+1;
+          stylesXml=stylesXml.slice(0,insertAfter)+`<numFmts count="1"><numFmt numFmtId="${TEXT_NUMFMT_ID}" formatCode="@"/></numFmts>`+stylesXml.slice(insertAfter);
+        }
+      }
+      // 确保 cellXfs 里有引用 numFmtId=49 的 xf
+      const cellXfsMatch=stylesXml.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/);
+      if(cellXfsMatch){
+        const xfTags=[...cellXfsMatch[1].matchAll(/<xf[^/]*/g)];
+        let foundIdx=xfTags.findIndex(m=>m[0].includes(`numFmtId="${TEXT_NUMFMT_ID}"`));
+        if(foundIdx>=0){
+          textXfIdx=foundIdx;
+        } else {
+          const newXf=`<xf numFmtId="${TEXT_NUMFMT_ID}" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>`;
+          textXfIdx=xfTags.length;
+          stylesXml=stylesXml.replace(/<\/cellXfs>/,`${newXf}</cellXfs>`);
+          stylesXml=stylesXml.replace(/(<cellXfs[^>]*\scount=")(\d+)(")/,(m,a,n,b)=>`${a}${parseInt(n)+1}${b}`);
+        }
+      }
+      files['xl/styles.xml']={data:new TextEncoder().encode(stylesXml),entry:stylesEntry.entry};
+    }catch(e){console.warn('styles.xml patch failed:',e);textXfIdx=null;}
+  }
+  // 替换 newRowsXml 中的 TEXT_STYLE_IDX 占位符
+  if(textXfIdx!==null){
+    newRowsXml=newRowsXml.replace(/TEXT_STYLE_IDX/g,String(textXfIdx));
+  } else {
+    newRowsXml=newRowsXml.replace(/\s*s="TEXT_STYLE_IDX"/g,'');
+  }
+  // ── styles 注入结束 ───────────────────────────────────────────────────────
+
   let sheetPath=`xl/worksheets/sheet${sheetIdx+1}.xml`;
   const wbRelsEntry=files['xl/_rels/workbook.xml.rels'];
   const wbEntry=files['xl/workbook.xml'];
@@ -1071,7 +1123,9 @@ function _doFillXlsxFallback(origBytes,wb,ws,wsRange,headerSheetRow,firstDataShe
       const val=rv[th];const sc=colToSheetCol[th];if(sc===undefined||!val||String(val).trim()==='')return;
       const addr=XLSX.utils.encode_cell({r:firstDataSheetRow+ri,c:sc});
       const s=String(val);const n=parseFloat(s);
-      ws[addr]=!isNaN(n)&&s.trim()!==''?{t:'n',v:n,w:s}:{t:'s',v:s,w:s};
+      const pureDigits=/^\d+$/.test(s.trim());
+      const forceText=pureDigits&&(s.trim().length>15||s.trim()[0]==='0');
+      ws[addr]=(!forceText&&!isNaN(n)&&s.trim()!=='')?{t:'n',v:n,w:s}:{t:'s',v:s,w:s};
     });
   });
   wsRange.e.r=actualRowCount>0?firstDataSheetRow+actualRowCount-1:headerSheetRow;
