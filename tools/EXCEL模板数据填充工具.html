@@ -126,6 +126,8 @@ h1{color:#ff6b9d;text-align:center;margin-bottom:30px;font-size:2.2rem;font-weig
 .filter-status{padding:10px 20px;background:#fee440;border-radius:40px;border:2px solid #9b5de5;font-weight:600;color:#3b2e6b;font-size:.9rem;display:flex;align-items:center;gap:12px;margin-bottom:12px;}
 .clear-filters-btn{padding:5px 14px;border-radius:20px;border:2px solid #3b2e6b;background:#ff6b9d;color:#fff;font-weight:700;cursor:pointer;font-size:.82rem;}
 .highlight-match{background:#fee440;color:#3b2e6b;border-radius:3px;padding:0 1px;font-weight:700;}
+.text-int{font-family:monospace;}
+.int-badge{display:inline-block;margin-left:4px;background:#9b5de5;color:#fff;font-size:.65rem;font-weight:700;border-radius:4px;padding:1px 4px;vertical-align:middle;cursor:help;font-family:sans-serif;}
 
 /* ========== PAGINATION (optimized, matches merge tool style) ========== */
 .pagination-bar {
@@ -411,9 +413,23 @@ function sheetToRows(ws){
       const cell=ws[XLSX.utils.encode_cell({r,c})];
       let val='';
       if(cell){
-        if(cell.t==='n') val=cell.v;
-        else if(cell.t==='d') val=cell.w||cell.v;
-        else val=cell.w!==undefined?cell.w:cell.v;
+        if(cell.t==='n'){
+          // 对数值型单元格，优先使用格式化文本(w)以保留长整数精度
+          // 但需要过滤掉货币符号、千分位等格式，仅在w看起来是纯数字时才使用w
+          const w=cell.w!==undefined?String(cell.w).trim():'';
+          const stripped=w.replace(/[,，\s]/g,''); // 去除千分位逗号和空格
+          // 如果格式化文本去掉千分位后是纯数字，用它（保留精度）
+          // 否则回退到原始数值（如：货币"$1.23"、百分比"45%"等）
+          if(/^-?\d+(\.\d+)?$/.test(stripped)){
+            val=stripped;
+          } else {
+            val=cell.v;
+          }
+        } else if(cell.t==='d'){
+          val=cell.w||cell.v;
+        } else {
+          val=cell.w!==undefined?cell.w:cell.v;
+        }
       }
       row.push(val!==undefined&&val!==null?val:'');
     }
@@ -809,13 +825,15 @@ function doFill(){
           if(strVal.trim()==='') return;
           const addr=colLetter(ci)+sheetRowNum;
           // 判断是否应强制作为文本处理：
-          // 1. 以0开头的纯数字（如工号、邮编、账号）
-          // 2. 超过15位的纯数字（超出IEEE 754双精度精度，如银行账号、身份证）
-          // 3. 纯数字但含有前导/尾随空格（保留原始格式）
-          const pureDigits=/^\d+$/.test(strVal.trim());
-          const forceText=pureDigits&&(strVal.trim().length>15||strVal.trim()[0]==='0');
-          const numVal=parseFloat(strVal);
-          const isNum=!forceText&&!isNaN(numVal)&&strVal.trim()!=='';
+          // 1. 以0开头的纯数字（如工号、邮编）→ 避免前导零丢失
+          // 2. 超过15位的纯数字（超出IEEE 754双精度精度，如银行账号19位、身份证18位）
+          // 3. 科学计数法大数（如"1.23456789E+18"）→ 说明原始数据已精度丢失，强制文本
+          const trimmed=strVal.trim();
+          const pureDigits=/^\d+$/.test(trimmed);
+          const sciNotation=/^\d+\.?\d*[eE][+\-]?\d+$/.test(trimmed);
+          const forceText=(pureDigits&&(trimmed.length>15||trimmed[0]==='0'))||sciNotation;
+          const numVal=parseFloat(trimmed);
+          const isNum=!forceText&&!isNaN(numVal)&&trimmed!=='';
           if(isNum){
             cellsXml+=`<c r="${addr}"><v>${numVal}</v></c>`;
           } else if(forceText){
@@ -1111,7 +1129,9 @@ async function _patchXlsxZip(origBytes, sheetIdx, headerSheetRow, firstDataSheet
 
   files[sheetPath]={data:new TextEncoder().encode(patched),entry:sheetEntry.entry};
 
-  return _zipWriteAsync(files,fileEntries,new Set([sheetPath]));
+  const modifiedSet=new Set([sheetPath]);
+  if(textXfIdx!==null) modifiedSet.add('xl/styles.xml');
+  return _zipWriteAsync(files,fileEntries,modifiedSet);
 }
 
 function _doFillXlsxFallback(origBytes,wb,ws,wsRange,headerSheetRow,firstDataSheetRow,colToSheetCol,nonBlankRows,actualRowCount,tH,dataByCol,dataRowCount,filledCells){
@@ -1122,10 +1142,11 @@ function _doFillXlsxFallback(origBytes,wb,ws,wsRange,headerSheetRow,firstDataShe
     tH.forEach(th=>{
       const val=rv[th];const sc=colToSheetCol[th];if(sc===undefined||!val||String(val).trim()==='')return;
       const addr=XLSX.utils.encode_cell({r:firstDataSheetRow+ri,c:sc});
-      const s=String(val);const n=parseFloat(s);
-      const pureDigits=/^\d+$/.test(s.trim());
-      const forceText=pureDigits&&(s.trim().length>15||s.trim()[0]==='0');
-      ws[addr]=(!forceText&&!isNaN(n)&&s.trim()!=='')?{t:'n',v:n,w:s}:{t:'s',v:s,w:s};
+      const s=String(val);const trimS=s.trim();const n=parseFloat(trimS);
+      const pureDigits=/^\d+$/.test(trimS);
+      const sciNotation=/^\d+\.?\d*[eE][+\-]?\d+$/.test(trimS);
+      const forceText=(pureDigits&&(trimS.length>15||trimS[0]==='0'))||sciNotation;
+      ws[addr]=(!forceText&&!isNaN(n)&&trimS!=='')?{t:'n',v:n,w:s}:{t:'s',v:s,w:s};
     });
   });
   wsRange.e.r=actualRowCount>0?firstDataSheetRow+actualRowCount-1:headerSheetRow;
@@ -1306,7 +1327,11 @@ function renderPreviewBody(){
       content=str.split(regex).map((part,i)=>i%2===1?`<span class="highlight-match">${escapeHtml(part)}</span>`:escapeHtml(part)).join('');
     }else{content=escapeHtml(str);}
     const isTrunc=str.length>50;
-    return `<td${isTrunc?` title="${escapeHtml(str)}"`:''} class="${pvDataByCol[col]?'filled':''}">${content}</td>`;
+    // 标记需要文本保护的长整数字段
+    const trimStr=str.trim();
+    const isLongInt=(/^\d+$/.test(trimStr)&&(trimStr.length>15||trimStr[0]==='0'))||/^\d+\.?\d*[eE][+\-]?\d+$/.test(trimStr);
+    const extraClass=isLongInt?' text-int':'';
+    return `<td${isTrunc?` title="${escapeHtml(str)}"`:''} class="${pvDataByCol[col]?'filled':''}${extraClass}">${content}${isLongInt?'<span class="int-badge" title="已保护为文本格式，防止精度丢失">T</span>':''}</td>`;
   }
 
   let tbody='';
