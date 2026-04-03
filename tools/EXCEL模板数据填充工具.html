@@ -129,7 +129,7 @@ h1{color:#ff6b9d;text-align:center;margin-bottom:30px;font-size:2.2rem;font-weig
 .text-int{font-family:monospace;}
 .int-badge{display:inline-block;margin-left:4px;background:#9b5de5;color:#fff;font-size:.65rem;font-weight:700;border-radius:4px;padding:1px 4px;vertical-align:middle;cursor:help;font-family:sans-serif;}
 
-/* ========== PAGINATION (optimized, matches merge tool style) ========== */
+/* ========== PAGINATION ========== */
 .pagination-bar {
   display: flex;
   align-items: center;
@@ -381,6 +381,14 @@ function showToast(msg,dur=3000){
 function escapeHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escapeJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 
+// ==================== STRICT NUMBER CHECK ====================
+// FIX: Use strict regex instead of parseFloat/isNaN.
+// parseFloat("3244F0059000029") === 3244 (stops at 'F'), causing truncation.
+// This regex only matches strings that are entirely numeric (integers or decimals).
+function isStrictNumber(s) {
+  return /^-?\d+(\.\d+)?([eE][+\-]?\d+)?$/.test(s);
+}
+
 // ==================== FILE PARSE ====================
 function parseFile(file){
   return new Promise((resolve,reject)=>{
@@ -414,12 +422,8 @@ function sheetToRows(ws){
       let val='';
       if(cell){
         if(cell.t==='n'){
-          // 对数值型单元格，优先使用格式化文本(w)以保留长整数精度
-          // 但需要过滤掉货币符号、千分位等格式，仅在w看起来是纯数字时才使用w
           const w=cell.w!==undefined?String(cell.w).trim():'';
-          const stripped=w.replace(/[,，\s]/g,''); // 去除千分位逗号和空格
-          // 如果格式化文本去掉千分位后是纯数字，用它（保留精度）
-          // 否则回退到原始数值（如：货币"$1.23"、百分比"45%"等）
+          const stripped=w.replace(/[,，\s]/g,'');
           if(/^-?\d+(\.\d+)?$/.test(stripped)){
             val=stripped;
           } else {
@@ -824,21 +828,19 @@ function doFill(){
           const strVal=String(val);
           if(strVal.trim()==='') return;
           const addr=colLetter(ci)+sheetRowNum;
-          // 判断是否应强制作为文本处理：
-          // 1. 以0开头的纯数字（如工号、邮编）→ 避免前导零丢失
-          // 2. 超过15位的纯数字（超出IEEE 754双精度精度，如银行账号19位、身份证18位）
-          // 3. 科学计数法大数（如"1.23456789E+18"）→ 说明原始数据已精度丢失，强制文本
           const trimmed=strVal.trim();
           const pureDigits=/^\d+$/.test(trimmed);
           const sciNotation=/^\d+\.?\d*[eE][+\-]?\d+$/.test(trimmed);
+          // FIX: forceText for leading-zero or >15-digit pure numbers, or sci notation strings
           const forceText=(pureDigits&&(trimmed.length>15||trimmed[0]==='0'))||sciNotation;
+          // FIX: Use strict number check — parseFloat("3244F0059000029")===3244 (truncation bug!)
+          // isStrictNumber ensures the ENTIRE string is numeric, not just a prefix.
+          const strictNum=isStrictNumber(trimmed);
           const numVal=parseFloat(trimmed);
-          const isNum=!forceText&&!isNaN(numVal)&&trimmed!=='';
+          const isNum=!forceText&&strictNum&&trimmed!=='';
           if(isNum){
             cellsXml+=`<c r="${addr}"><v>${numVal}</v></c>`;
           } else if(forceText){
-            // 文本格式数字：加 s="TEXT_STYLE_IDX" 属性，_patchXlsxZip 会替换为实际 xf index
-            // t="str" 表示公式字符串，配合文本格式 xf 确保 Excel 不自动转换
             cellsXml+=`<c r="${addr}" t="str" s="TEXT_STYLE_IDX"><v>${xmlEsc(strVal)}</v></c>`;
           } else {
             cellsXml+=`<c r="${addr}" t="inlineStr"><is><t>${xmlEsc(strVal)}</t></is></c>`;
@@ -1042,14 +1044,12 @@ function _crc32(data){let c=0xFFFFFFFF;for(let i=0;i<data.length;i++)c=_crcTable
 async function _patchXlsxZip(origBytes, sheetIdx, headerSheetRow, firstDataSheetRow, newRowsXml, actualRowCount, wsRange){
   const {files,fileEntries}=await _zipReadAsync(origBytes);
 
-  // ── 注入文本格式到 styles.xml，获取文本格式的 xf index ──────────────────
   let textXfIdx=null;
   const stylesEntry=files['xl/styles.xml'];
   if(stylesEntry){
     try{
       let stylesXml=new TextDecoder('utf-8').decode(stylesEntry.data);
       const TEXT_NUMFMT_ID=49;
-      // 确保 numFmt id=49 (@) 存在
       if(!stylesXml.includes(`numFmtId="${TEXT_NUMFMT_ID}"`)){
         if(/<numFmts/.test(stylesXml)){
           stylesXml=stylesXml.replace('</numFmts>',`<numFmt numFmtId="${TEXT_NUMFMT_ID}" formatCode="@"/></numFmts>`);
@@ -1059,10 +1059,9 @@ async function _patchXlsxZip(origBytes, sheetIdx, headerSheetRow, firstDataSheet
           stylesXml=stylesXml.slice(0,insertAfter)+`<numFmts count="1"><numFmt numFmtId="${TEXT_NUMFMT_ID}" formatCode="@"/></numFmts>`+stylesXml.slice(insertAfter);
         }
       }
-      // 确保 cellXfs 里有引用 numFmtId=49 的 xf
       const cellXfsMatch=stylesXml.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/);
       if(cellXfsMatch){
-        const xfTags=[...cellXfsMatch[1].matchAll(/<xf[^/]*/g)];
+        const xfTags=[...cellXfsMatch[1].matchAll(/<xf[^/]*/g)];
         let foundIdx=xfTags.findIndex(m=>m[0].includes(`numFmtId="${TEXT_NUMFMT_ID}"`));
         if(foundIdx>=0){
           textXfIdx=foundIdx;
@@ -1076,13 +1075,11 @@ async function _patchXlsxZip(origBytes, sheetIdx, headerSheetRow, firstDataSheet
       files['xl/styles.xml']={data:new TextEncoder().encode(stylesXml),entry:stylesEntry.entry};
     }catch(e){console.warn('styles.xml patch failed:',e);textXfIdx=null;}
   }
-  // 替换 newRowsXml 中的 TEXT_STYLE_IDX 占位符
   if(textXfIdx!==null){
     newRowsXml=newRowsXml.replace(/TEXT_STYLE_IDX/g,String(textXfIdx));
   } else {
     newRowsXml=newRowsXml.replace(/\s*s="TEXT_STYLE_IDX"/g,'');
   }
-  // ── styles 注入结束 ───────────────────────────────────────────────────────
 
   let sheetPath=`xl/worksheets/sheet${sheetIdx+1}.xml`;
   const wbRelsEntry=files['xl/_rels/workbook.xml.rels'];
@@ -1146,7 +1143,9 @@ function _doFillXlsxFallback(origBytes,wb,ws,wsRange,headerSheetRow,firstDataShe
       const pureDigits=/^\d+$/.test(trimS);
       const sciNotation=/^\d+\.?\d*[eE][+\-]?\d+$/.test(trimS);
       const forceText=(pureDigits&&(trimS.length>15||trimS[0]==='0'))||sciNotation;
-      ws[addr]=(!forceText&&!isNaN(n)&&trimS!=='')?{t:'n',v:n,w:s}:{t:'s',v:s,w:s};
+      // FIX: strict number check — parseFloat("3244F0059000029")===3244 causes truncation
+      const strictNum=isStrictNumber(trimS);
+      ws[addr]=(!forceText&&strictNum&&trimS!=='')?{t:'n',v:n,w:s}:{t:'s',v:s,w:s};
     });
   });
   wsRange.e.r=actualRowCount>0?firstDataSheetRow+actualRowCount-1:headerSheetRow;
@@ -1327,7 +1326,6 @@ function renderPreviewBody(){
       content=str.split(regex).map((part,i)=>i%2===1?`<span class="highlight-match">${escapeHtml(part)}</span>`:escapeHtml(part)).join('');
     }else{content=escapeHtml(str);}
     const isTrunc=str.length>50;
-    // 标记需要文本保护的长整数字段
     const trimStr=str.trim();
     const isLongInt=(/^\d+$/.test(trimStr)&&(trimStr.length>15||trimStr[0]==='0'))||/^\d+\.?\d*[eE][+\-]?\d+$/.test(trimStr);
     const extraClass=isLongInt?' text-int':'';
@@ -1345,7 +1343,7 @@ function renderPreviewBody(){
   document.getElementById('pvBody').innerHTML=tbody;
 }
 
-// ==================== PAGINATION (optimized) ====================
+// ==================== PAGINATION ====================
 function renderPvPagination(){
   const filtered=getFilteredRows();
   const total=filtered.length;
@@ -1353,7 +1351,6 @@ function renderPvPagination(){
   const start=(pvCurrentPage-1)*pvPageSize+1;
   const end=Math.min(pvCurrentPage*pvPageSize,total);
 
-  // Build page number slots using same algorithm as merge tool
   let pages=[];
   const maxVisible=7;
   if(totalPages<=maxVisible){
@@ -1370,7 +1367,6 @@ function renderPvPagination(){
     pages.push(totalPages);
   }
 
-  // Page number buttons
   let pageBtns='';
   pages.forEach(p=>{
     if(p==='...'){
@@ -1380,7 +1376,6 @@ function renderPvPagination(){
     }
   });
 
-  // Page size options
   const sizeOptions=PV_PAGE_SIZES.map(s=>`<option value="${s}"${s===pvPageSize?' selected':''}>${s} 条/页</option>`).join('');
 
   document.getElementById('pvPagination').innerHTML=`<div class="pagination-bar">
